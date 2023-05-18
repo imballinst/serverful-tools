@@ -26,7 +26,7 @@
       ]
     }
   },
-  "postCreateCommand": "yarn global add yalc",
+  "postCreateCommand": "yarn global add netlify-cli",
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   // "forwardPorts": [],
   // Use 'postCreateCommand' to run commands after the container is created.
