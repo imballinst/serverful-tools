@@ -1,4 +1,4 @@
-import { Bitbucket } from "bitbucket";
+import { Bitbucket } from 'bitbucket';
 
 let bitbucket = new Bitbucket({});
 
@@ -8,12 +8,12 @@ export function setAccessToken(token: string) {
 
 export async function getCommits() {
   const response = await bitbucket.commits.list({
-    repo_slug: "",
-    workspace: "",
+    repo_slug: '',
+    workspace: ''
   });
   const commit = await bitbucket.commits.getDiff({
-    repo_slug: "",
-    workspace: "",
-    spec: response.data.values?.[0]?.hash || "",
+    repo_slug: '',
+    workspace: '',
+    spec: response.data.values?.[0]?.hash || ''
   });
 }
