@@ -1,4 +1,4 @@
-import type { V2_MetaFunction } from '@remix-run/node';
+import type { LoaderFunction, V2_MetaFunction } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { useLoaderData } from '@remix-run/react';
 
@@ -6,7 +6,7 @@ export const meta: V2_MetaFunction = () => {
   return [{ title: 'New Remix App' }];
 };
 
-export const loader = () => {
+export const loader: LoaderFunction = () => {
   return json({ clientId: process.env.BB_OAUTH_CONSUMER_KEY });
 };
 
