@@ -1,53 +1,29 @@
-import type { LoaderFunction } from '@remix-run/node';
-import { json, redirect } from '@remix-run/node';
-import {
-  accessTokenCookie,
-  refreshTokenCookie
-} from '~/utils/server-utils/cookies/cookies';
+import { useNavigate } from '@remix-run/react';
+import { useEffect } from 'react';
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const searchParams = new URL(request.url).searchParams;
-  const code = searchParams.get('code');
+export default function Authorize() {
+  const navigate = useNavigate();
 
-  if (!code) {
-    return json({}, { status: 400 });
-  }
+  useEffect(() => {
+    async function exchange() {
+      const searchParams = new URL(window.location.href).searchParams;
+      const code = searchParams.get('code');
 
-  const response = await fetch(
-    `https://bitbucket.org/site/oauth2/access_token`,
-    // `https://bitbucket.org/site/oauth2/access_token?grant_type=authorization_code&code=${code}`,
-    {
-      method: 'post',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-        authorization: `Basic ${toBase64(
-          `${process.env.BB_OAUTH_CONSUMER_KEY}:${process.env.BB_OAUTH_CONSUMER_SECRET}`
-        )}`
-      },
-      body: `grant_type=authorization_code&code=${code}`
+      const response = await fetch(`${window.location.origin}/api/authorize`, {
+        method: 'post',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const json = await response.json();
+
+      if (json.sessionId) {
+        window.localStorage.setItem('sessionId', json.sessionId);
+        navigate('/');
+      }
     }
-  );
 
-  const content = await response.json();
-  if (!response.ok)
-    throw new Error(content?.error_description || response.statusText);
+    exchange();
+  }, [navigate]);
 
-  const headers = new Headers();
-  headers.append(
-    'Set-Cookie',
-    await accessTokenCookie.serialize(content.access_token)
-  );
-  headers.append(
-    'Set-Cookie',
-    await refreshTokenCookie.serialize(content.refresh_token)
-  );
-
-  return redirect('/', {
-    headers
-  });
-};
-
-// Helper functions.
-function toBase64(str: string) {
-  return Buffer.from(str).toString('base64');
+  return <div>Authorizing...</div>;
 }
