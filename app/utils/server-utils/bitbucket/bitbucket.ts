@@ -37,13 +37,36 @@ export async function getCommits(token: string) {
         workspace: WORKSPACE,
         spec: commit.hash
       });
+      const diffLines: string[] = tmpDiff.data.split('\n');
+      const diffInfo = {
+        additions: 0,
+        deletions: 0
+      };
+
+      for (const line of diffLines) {
+        if (line.startsWith('---') || line.startsWith('+++')) continue;
+
+        if (line.startsWith('+')) {
+          diffInfo.additions++;
+        } else if (line.startsWith('-')) {
+          diffInfo.deletions++;
+        }
+      }
+      const diffData = {
+        raw: tmpDiff.data,
+        diffInfo,
+        url: `https://bitbucket.org/${WORKSPACE}/${REPO_SLUG}/commits/${commit.hash}`,
+        date: commit.date,
+        message: commit.message
+      };
+
       storeCommitDiffToCache({
         commitHash: commit.hash,
-        diff: tmpDiff,
+        diff: diffData,
         repository: REPO_SLUG,
         workspace: WORKSPACE
       });
-      diff.push(tmpDiff);
+      diff.push(diffData);
     }
 
     return {

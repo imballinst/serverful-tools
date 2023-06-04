@@ -24,7 +24,30 @@ export default function Commits() {
     <main>
       <h2>Commits</h2>
 
-      <pre>{JSON.stringify(commits, null, 2)}</pre>
+      <table>
+        <thead>
+          <tr>
+            <th>Commit link</th>
+            <th>Commit title</th>
+            <th>Commit date</th>
+            <th>Number of lines changed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {commits &&
+            commits.diff.map((diffData: any, idx: number) => (
+              <tr key={idx}>
+                <td>{diffData.url}</td>
+                <td>{diffData.message}</td>
+                <td>{diffData.date}</td>
+                <td>
+                  {diffData.diffInfo.additions + diffData.diffInfo.deletions} (+
+                  {diffData.diffInfo.additions}, -{diffData.diffInfo.deletions})
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
     </main>
   );
 }
