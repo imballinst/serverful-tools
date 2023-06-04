@@ -6,20 +6,10 @@ const DOMAIN =
 
 export const getCookieExpires = () => new Date(Date.now() + 60_000);
 
-export const accessTokenCookie = createCookie('access_token', {
+export const sessionIdCookie = createCookie('sessionId', {
   // all of these are optional defaults that can be overridden at runtime
   domain: DOMAIN,
-  expires: new Date(Date.now() + 60_000),
-  httpOnly: true,
-  path: '/',
-  sameSite: 'lax',
-  secure: true
-});
-
-export const refreshTokenCookie = createCookie('refresh_token', {
-  // all of these are optional defaults that can be overridden at runtime
-  domain: DOMAIN,
-  expires: new Date(Date.now() + 60_000),
+  expires: new Date(Date.now() + 60_000 * 1_000),
   httpOnly: true,
   path: '/',
   sameSite: 'lax',

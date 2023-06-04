@@ -1,26 +1,35 @@
-import type { LoaderFunction, V2_MetaFunction } from '@remix-run/node';
-import { json } from '@remix-run/node';
-import { useLoaderData } from '@remix-run/react';
+import type { V2_MetaFunction } from '@remix-run/node';
+import { Form } from '@remix-run/react';
 
 export const meta: V2_MetaFunction = () => {
   return [{ title: 'New Remix App' }];
 };
 
-export const loader: LoaderFunction = () => {
-  return json({ clientId: process.env.BB_OAUTH_CONSUMER_KEY });
-};
-
 export default function Index() {
-  const { clientId } = useLoaderData<typeof loader>();
+  const onSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+
+    const { action, method } = e.currentTarget;
+    const formData = new FormData(e.currentTarget);
+
+    const response = await fetch(action, {
+      method,
+      body: formData
+    });
+    const json = await response.json();
+
+    window.localStorage.setItem('sessionId', json.sessionId);
+  };
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', lineHeight: '1.4' }}>
       <h1>Welcome to Remix</h1>
-      <a
-        href={`https://bitbucket.org/site/oauth2/authorize?client_id=${clientId}&response_type=code`}
-      >
-        Authorize
-      </a>
+
+      <Form action="/api/authorize" method="post" onSubmit={onSubmit}>
+        <input type="text" name="token" />
+
+        <button type="submit">Authorize</button>
+      </Form>
     </div>
   );
 }

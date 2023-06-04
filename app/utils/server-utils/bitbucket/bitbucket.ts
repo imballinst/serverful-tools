@@ -17,11 +17,19 @@ export async function getCommits(token: string) {
 
     for (const commit of commits) {
       if (!commit.hash) continue;
-      const cachedDiff = await getCommitDiffCache(commit.hash);
 
-      if (cachedDiff) {
-        diff.push(cachedDiff);
-        continue;
+      try {
+        const cachedDiff = await getCommitDiffCache({
+          commitHash: commit.hash,
+          repository: REPO_SLUG,
+          workspace: WORKSPACE
+        });
+        if (cachedDiff) {
+          diff.push(cachedDiff);
+          continue;
+        }
+      } catch (err) {
+        // No-op.
       }
 
       const tmpDiff = await bitbucket.commits.getDiff({
@@ -29,7 +37,13 @@ export async function getCommits(token: string) {
         workspace: WORKSPACE,
         spec: commit.hash
       });
-      storeCommitDiffToCache(tmpDiff);
+      storeCommitDiffToCache({
+        commitHash: commit.hash,
+        diff: tmpDiff,
+        repository: REPO_SLUG,
+        workspace: WORKSPACE
+      });
+      diff.push(tmpDiff);
     }
 
     return {
