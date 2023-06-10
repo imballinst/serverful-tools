@@ -3,7 +3,7 @@ import { Button, Form, Input, Layout, Collapse, Typography } from 'antd';
 import type { CollapseProps } from 'antd';
 import { CommitsTable } from '~/components/CommitsTable';
 
-const { Header, Content, Footer, Sider } = Layout;
+const { Content } = Layout;
 
 const AuthorizationCollapse = ({
   setSessionId
