@@ -6,5 +6,5 @@ export const meta: V2_MetaFunction = () => {
 };
 
 export default function Index() {
-  return <Navigate to="/commits" />;
+  return typeof window === 'undefined' ? null : <Navigate to="/commits" />;
 }

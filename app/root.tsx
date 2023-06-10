@@ -12,7 +12,6 @@ import { Navbar } from './components/Navbar';
 
 import styles from './antd.min.css';
 import reset from 'antd/dist/reset.css';
-import { Button } from 'antd';
 
 export const links: LinksFunction = () => [
   { rel: 'stylesheet', href: reset },
@@ -31,8 +30,6 @@ export default function App() {
       </head>
       <body>
         <Navbar />
-
-        <Button>xd2d</Button>
 
         <Outlet />
         <ScrollRestoration />
