@@ -16,7 +16,10 @@ const columns: TableColumnsType<DataType> = [
     title: 'Commit link',
     dataIndex: 'url',
     key: 'url',
-    render: (text) => <a href={text}>{text}</a>
+    render: (url) => {
+      const segments = url.split('/');
+      return <a href={url}>{segments[segments.length - 1]}</a>;
+    }
   },
   {
     title: 'Commit title',
