@@ -1,7 +1,6 @@
 import { cssBundleHref } from '@remix-run/css-bundle';
 import type { LinksFunction } from '@remix-run/node';
 import {
-  Link,
   Links,
   LiveReload,
   Meta,
@@ -9,8 +8,15 @@ import {
   Scripts,
   ScrollRestoration
 } from '@remix-run/react';
+import { Navbar } from './components/Navbar';
+
+import styles from './antd.min.css';
+import reset from 'antd/dist/reset.css';
+import { Button } from 'antd';
 
 export const links: LinksFunction = () => [
+  { rel: 'stylesheet', href: reset },
+  { rel: 'stylesheet', href: styles },
   ...(cssBundleHref ? [{ rel: 'stylesheet', href: cssBundleHref }] : [])
 ];
 
@@ -24,12 +30,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/commits">Commits</Link>
-          </nav>
-        </header>
+        <Navbar />
+
+        <Button>xd2d</Button>
 
         <Outlet />
         <ScrollRestoration />
