@@ -23,14 +23,19 @@ const FetchInformationForm = ({
   setCommitsFetchInformation: Dispatch<SetStateAction<CommitsFetchInformation>>;
   env: RootLoaderData['env'];
 }) => {
-  const [form] = Form.useForm<Omit<CommitsFetchInformation, 'sessionId'>>();
+  const [formInstance] =
+    Form.useForm<Omit<CommitsFetchInformation, 'sessionId'>>();
 
   useEffect(() => {
-    form.setFieldsValue({
+    formInstance.setFieldsValue({
       repo: commitsFetchInformation.repo,
       workspace: commitsFetchInformation.workspace
     });
-  }, [form, commitsFetchInformation.repo, commitsFetchInformation.workspace]);
+  }, [
+    formInstance,
+    commitsFetchInformation.repo,
+    commitsFetchInformation.workspace
+  ]);
 
   const onSubmitAuthorization = async (values: any) => {
     const formData = new FormData();
@@ -81,7 +86,16 @@ const FetchInformationForm = ({
           onFinish={onSubmitAuthorization}
           layout="vertical"
         >
-          <Form.Item label="Bitbucket repository access token" name="token">
+          <Form.Item
+            label="Bitbucket repository access token"
+            name="token"
+            rules={[
+              {
+                required: true,
+                message: 'Bitbucket repository access token is required'
+              }
+            ]}
+          >
             <Input />
           </Form.Item>
 
@@ -97,7 +111,7 @@ const FetchInformationForm = ({
 
       <Form
         name="basic"
-        form={form}
+        form={formInstance}
         autoComplete="off"
         onFinish={onSubmitRepoInformation}
         layout="vertical"
@@ -107,6 +121,9 @@ const FetchInformationForm = ({
           label="Bitbucket workspace"
           name="workspace"
           className="md:flex-1 md:mb-0"
+          rules={[
+            { required: true, message: 'Bitbucket workspace is required' }
+          ]}
         >
           <Input />
         </Form.Item>
@@ -115,6 +132,9 @@ const FetchInformationForm = ({
           label="Bitbucket repository"
           name="repo"
           className="md:flex-1 md:mb-0"
+          rules={[
+            { required: true, message: 'Bitbucket repository is required' }
+          ]}
         >
           <Input />
         </Form.Item>
