@@ -1,17 +1,22 @@
 import { Bitbucket } from 'bitbucket';
 import { getCommitDiffCache, storeCommitDiffToCache } from './cache';
 
-const REPO_SLUG = 'test-repo';
-const WORKSPACE = 'imballinst2';
-
-export async function getCommits(token: string) {
+export async function getCommits({
+  workspace,
+  repo,
+  token
+}: {
+  workspace: string;
+  repo: string;
+  token: string;
+}) {
   let bitbucket = new Bitbucket({ auth: { token } });
   let diff: any = [];
 
   try {
     const response = await bitbucket.commits.list({
-      repo_slug: REPO_SLUG,
-      workspace: WORKSPACE
+      repo_slug: repo,
+      workspace
     });
     const commits = response.data.values || [];
 
@@ -21,8 +26,8 @@ export async function getCommits(token: string) {
       try {
         const cachedDiff = await getCommitDiffCache({
           commitHash: commit.hash,
-          repository: REPO_SLUG,
-          workspace: WORKSPACE
+          repository: repo,
+          workspace
         });
         if (cachedDiff) {
           diff.push(cachedDiff);
@@ -33,8 +38,8 @@ export async function getCommits(token: string) {
       }
 
       const tmpDiff = await bitbucket.commits.getDiff({
-        repo_slug: REPO_SLUG,
-        workspace: WORKSPACE,
+        repo_slug: repo,
+        workspace,
         spec: commit.hash
       });
       const diffLines: string[] = tmpDiff.data.split('\n');
@@ -55,7 +60,7 @@ export async function getCommits(token: string) {
       const diffData = {
         raw: tmpDiff.data,
         diffInfo,
-        url: `https://bitbucket.org/${WORKSPACE}/${REPO_SLUG}/commits/${commit.hash}`,
+        url: `https://bitbucket.org/}/${repo}/commits/${commit.hash}`,
         date: commit.date,
         message: commit.message
       };
@@ -63,8 +68,8 @@ export async function getCommits(token: string) {
       storeCommitDiffToCache({
         commitHash: commit.hash,
         diff: diffData,
-        repository: REPO_SLUG,
-        workspace: WORKSPACE
+        repository: repo,
+        workspace
       });
       diff.push(diffData);
     }

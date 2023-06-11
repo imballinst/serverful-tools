@@ -1,7 +1,10 @@
 import type { ActionFunction } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { generateSessionId } from '~/utils/server-utils/cookies/cache';
-import { sessionIdCookie } from '~/utils/server-utils/cookies/cookies';
+import {
+  getCookieExpires,
+  sessionIdCookie
+} from '~/utils/server-utils/cookies/cookies';
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
@@ -16,7 +19,10 @@ export const action: ActionFunction = async ({ request }) => {
   });
 
   const headers = new Headers();
-  headers.append('Set-Cookie', await sessionIdCookie.serialize(sessionId));
+  headers.append(
+    'Set-Cookie',
+    await sessionIdCookie.serialize(sessionId, { expires: getCookieExpires() })
+  );
 
   return json(
     {

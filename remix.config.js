@@ -7,6 +7,7 @@ module.exports = {
       : undefined,
   serverBuildPath: '.netlify/functions-internal/server.js',
   serverDependenciesToBundle: ['nanoid'],
+  tailwind: true,
   // appDirectory: "app",
   // assetsBuildDirectory: "public/build",
   // publicPath: "/build/",

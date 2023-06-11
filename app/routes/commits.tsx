@@ -1,14 +1,27 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
-import { Button, Form, Input, Layout, Collapse, Typography } from 'antd';
+import { Button, Form, Input, Layout, Collapse, Typography, Space } from 'antd';
 import type { CollapseProps } from 'antd';
 import { CommitsTable } from '~/components/CommitsTable';
+import { useRouteLoaderData } from '@remix-run/react';
+import type { RootLoaderData } from '~/utils/types/rootLoader';
 
 const { Content } = Layout;
 
-const AuthorizationCollapse = ({
-  setSessionId
+interface CommitsFetchInformation {
+  sessionId: string | null;
+  workspace: string;
+  repo: string;
+}
+
+const FetchInformationCollapse = ({
+  commitsFetchInformation,
+  setCommitsFetchInformation,
+  env
 }: {
-  setSessionId: (value: string) => void;
+  commitsFetchInformation: CommitsFetchInformation;
+  setCommitsFetchInformation: Dispatch<SetStateAction<CommitsFetchInformation>>;
+  env: RootLoaderData['env'];
 }) => {
   const onSubmit = async (values: any) => {
     const formData = new FormData();
@@ -21,15 +34,29 @@ const AuthorizationCollapse = ({
     const json = await response.json();
 
     if (json.sessionId) {
-      window.localStorage.setItem('sessionId', json.sessionId);
-      setSessionId(json.sessionId);
+      setCommitsFetchInformation((oldState) => ({
+        ...oldState,
+        sessionId: json.sessionId,
+        repo: values.repo,
+        workspace: values.workspace
+      }));
+
+      window.localStorage.setItem(
+        'bitbucketFormState',
+        JSON.stringify({ repo: values.repo, workspace: values.workspace })
+      );
+
+      // Only set localStorage in dev.
+      if (isDev(env.NODE_ENV)) {
+        window.localStorage.setItem('sessionId', json.sessionId);
+      }
     }
   };
 
   const items: CollapseProps['items'] = [
     {
-      key: 'authorization',
-      label: 'Authorization',
+      key: 'fetchInformation',
+      label: 'Fetch Information',
       children: (
         <Form
           name="basic"
@@ -43,6 +70,14 @@ const AuthorizationCollapse = ({
             <Input />
           </Form.Item>
 
+          <Form.Item label="Bitbucket workspace" name="workspace">
+            <Input defaultValue={commitsFetchInformation.workspace} />
+          </Form.Item>
+
+          <Form.Item label="Bitbucket repository" name="repo">
+            <Input defaultValue={commitsFetchInformation.repo} />
+          </Form.Item>
+
           <Button htmlType="submit">Submit</Button>
         </Form>
       )
@@ -53,35 +88,88 @@ const AuthorizationCollapse = ({
 };
 
 export default function Commits() {
-  const [sessionId, setSessionId] = useState('');
+  const { env } = useRouteLoaderData('root') as RootLoaderData;
+
+  const [commitsFetchInformation, setCommitsFetchInformation] =
+    useState<CommitsFetchInformation>({
+      repo: '',
+      workspace: '',
+      sessionId: null
+    });
   const [commits, setCommits] = useState<any>(null);
   const [fetchCommitsError, setFetchCommitsError] = useState<string | null>(
     null
   );
 
   useEffect(() => {
-    const storageSessionId = window.localStorage.getItem('sessionId');
-    if (storageSessionId) {
-      setSessionId(storageSessionId);
+    const bitbucketFormState =
+      window.localStorage.getItem('bitbucketFormState');
+
+    if (bitbucketFormState) {
+      const parsed = JSON.parse(bitbucketFormState);
+      setCommitsFetchInformation((oldState) => ({
+        ...oldState,
+        workspace: parsed.workspace,
+        repo: parsed.repo
+      }));
     }
   }, []);
 
   useEffect(() => {
+    // Local storage is only for DEV, in case in Codespaces.
+    // In production, we always set this to empty string since we'll be using cookies.
+    if (!isDev(env.NODE_ENV)) {
+      setCommitsFetchInformation((oldState) => ({
+        ...oldState,
+        sessionId: ''
+      }));
+      return;
+    }
+
+    const storageSessionId = window.localStorage.getItem('sessionId');
+    setCommitsFetchInformation((oldState) => ({
+      ...oldState,
+      sessionId: storageSessionId || ''
+    }));
+  }, [env.NODE_ENV]);
+
+  useEffect(() => {
     async function fetchCommits() {
-      if (!sessionId) {
+      const { repo, sessionId, workspace } = commitsFetchInformation;
+
+      // No-op when sessionId is still null.
+      if (sessionId === null) return;
+
+      // Dev only: check if we have session ID or not since in Codespaces we tend to not being able
+      // to have cookies.
+      if (isDev(env.NODE_ENV) && !sessionId) {
         setFetchCommitsError(
           'Please input your Bitbucket repository token first.'
         );
         return;
       }
 
+      // TODO: maybe we can use something like react-hook-form here.
+      if (!workspace) {
+        setFetchCommitsError('Please input your Bitbucket workspace first.');
+        return;
+      }
+
+      if (!repo) {
+        setFetchCommitsError('Please input your Bitbucket repository first.');
+        return;
+      }
+
       setCommits(null);
       setFetchCommitsError(null);
-      const response = await fetch('/api/commits', {
-        headers: {
-          'x-session-id': sessionId
+      const response = await fetch(
+        `/api/workspaces/${workspace}/repos/${repo}/commits`,
+        {
+          headers: {
+            'x-session-id': sessionId
+          }
         }
-      });
+      );
 
       if (response.status !== 200) {
         const json = await response.json();
@@ -110,16 +198,27 @@ export default function Commits() {
     }
 
     fetchCommits();
-  }, [sessionId]);
+  }, [commitsFetchInformation, env.NODE_ENV]);
 
   return (
     <Content style={{ padding: 16 }}>
-      <AuthorizationCollapse setSessionId={setSessionId} />
+      <Space direction="vertical" className="w-full">
+        <FetchInformationCollapse
+          commitsFetchInformation={commitsFetchInformation}
+          setCommitsFetchInformation={setCommitsFetchInformation}
+          env={env}
+        />
 
-      {fetchCommitsError && (
-        <Typography.Paragraph>{fetchCommitsError}</Typography.Paragraph>
-      )}
-      {commits && <CommitsTable data={commits.diff} />}
+        {fetchCommitsError && (
+          <Typography.Paragraph>{fetchCommitsError}</Typography.Paragraph>
+        )}
+        {commits && <CommitsTable data={commits.diff} />}
+      </Space>
     </Content>
   );
+}
+
+// Helper functions.
+function isDev(env: RootLoaderData['env']['NODE_ENV']) {
+  return env === 'development';
 }

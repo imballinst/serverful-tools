@@ -5,10 +5,15 @@ import { CacheExpireError } from '~/utils/server-utils/common/cache';
 import { getTokensBySessionId } from '~/utils/server-utils/cookies/cache';
 import { sessionIdCookie } from '~/utils/server-utils/cookies/cookies';
 
-export const loader: LoaderFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ request, params }) => {
+  const { workspace, repo } = params;
   let sessionId = '';
 
   try {
+    if (!workspace || !repo) {
+      throw new Error('The workspace and repo param must be defined.');
+    }
+
     sessionId = await sessionIdCookie.parse(request.headers.get('cookie'));
     let accessToken = '';
 
@@ -19,7 +24,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     accessToken = getTokensBySessionId(sessionId).accessToken;
     if (!accessToken) return json({}, { status: 401 });
 
-    const commits = await getCommits(accessToken);
+    const commits = await getCommits({ workspace, repo, token: accessToken });
     return json({ commits });
   } catch (err) {
     if (err instanceof CacheExpireError) {
