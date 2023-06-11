@@ -33,18 +33,18 @@ const columns: TableColumnsType<DataType> = [
   },
   {
     title: 'Additions',
-    key: 'diffInfo',
+    key: 'additions',
     dataIndex: 'diffInfo',
     render: (_, { diffInfo }) => <span>{diffInfo.additions}</span>
   },
   {
     title: 'Deletions',
-    key: 'diffInfo',
+    key: 'deletions',
     dataIndex: 'diffInfo',
     render: (_, { diffInfo }) => <span>{diffInfo.deletions}</span>
   }
 ];
 
 export const CommitsTable = ({ data }: { data: DataType[] }) => (
-  <Table columns={columns} dataSource={data} />
+  <Table columns={columns} dataSource={data} rowKey="url" />
 );

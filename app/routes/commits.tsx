@@ -14,7 +14,7 @@ interface CommitsFetchInformation {
   repo: string;
 }
 
-const FetchInformationCollapse = ({
+const FetchInformationForm = ({
   commitsFetchInformation,
   setCommitsFetchInformation,
   env
@@ -23,7 +23,16 @@ const FetchInformationCollapse = ({
   setCommitsFetchInformation: Dispatch<SetStateAction<CommitsFetchInformation>>;
   env: RootLoaderData['env'];
 }) => {
-  const onSubmit = async (values: any) => {
+  const [form] = Form.useForm<Omit<CommitsFetchInformation, 'sessionId'>>();
+
+  useEffect(() => {
+    form.setFieldsValue({
+      repo: commitsFetchInformation.repo,
+      workspace: commitsFetchInformation.workspace
+    });
+  }, [form, commitsFetchInformation.repo, commitsFetchInformation.workspace]);
+
+  const onSubmitAuthorization = async (values: any) => {
     const formData = new FormData();
     formData.append('token', values.token);
 
@@ -41,11 +50,6 @@ const FetchInformationCollapse = ({
         workspace: values.workspace
       }));
 
-      window.localStorage.setItem(
-        'bitbucketFormState',
-        JSON.stringify({ repo: values.repo, workspace: values.workspace })
-      );
-
       // Only set localStorage in dev.
       if (isDev(env.NODE_ENV)) {
         window.localStorage.setItem('sessionId', json.sessionId);
@@ -53,29 +57,32 @@ const FetchInformationCollapse = ({
     }
   };
 
+  const onSubmitRepoInformation = async (values: any) => {
+    setCommitsFetchInformation((oldState) => ({
+      ...oldState,
+      repo: values.repo,
+      workspace: values.workspace
+    }));
+
+    window.localStorage.setItem(
+      'bitbucketFormState',
+      JSON.stringify({ repo: values.repo, workspace: values.workspace })
+    );
+  };
+
   const items: CollapseProps['items'] = [
     {
-      key: 'fetchInformation',
-      label: 'Fetch Information',
+      key: 'authorization',
+      label: 'Authorization',
       children: (
         <Form
           name="basic"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
           autoComplete="off"
-          onFinish={onSubmit}
+          onFinish={onSubmitAuthorization}
           layout="vertical"
         >
           <Form.Item label="Bitbucket repository access token" name="token">
             <Input />
-          </Form.Item>
-
-          <Form.Item label="Bitbucket workspace" name="workspace">
-            <Input defaultValue={commitsFetchInformation.workspace} />
-          </Form.Item>
-
-          <Form.Item label="Bitbucket repository" name="repo">
-            <Input defaultValue={commitsFetchInformation.repo} />
           </Form.Item>
 
           <Button htmlType="submit">Submit</Button>
@@ -84,7 +91,38 @@ const FetchInformationCollapse = ({
     }
   ];
 
-  return <Collapse items={items} />;
+  return (
+    <Space direction="vertical" className="w-full">
+      <Collapse items={items} />
+
+      <Form
+        name="basic"
+        form={form}
+        autoComplete="off"
+        onFinish={onSubmitRepoInformation}
+        layout="vertical"
+        className="md:flex md:flex-row md:space-x-2 md:items-end mb-6"
+      >
+        <Form.Item
+          label="Bitbucket workspace"
+          name="workspace"
+          className="md:flex-1 md:mb-0"
+        >
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Bitbucket repository"
+          name="repo"
+          className="md:flex-1 md:mb-0"
+        >
+          <Input />
+        </Form.Item>
+
+        <Button htmlType="submit">Submit</Button>
+      </Form>
+    </Space>
+  );
 };
 
 export default function Commits() {
@@ -203,7 +241,7 @@ export default function Commits() {
   return (
     <Content style={{ padding: 16 }}>
       <Space direction="vertical" className="w-full">
-        <FetchInformationCollapse
+        <FetchInformationForm
           commitsFetchInformation={commitsFetchInformation}
           setCommitsFetchInformation={setCommitsFetchInformation}
           env={env}
