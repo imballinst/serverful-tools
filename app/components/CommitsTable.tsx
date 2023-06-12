@@ -17,7 +17,6 @@ const columns: TableColumnsType<DiffContentWithoutRaw> = [
     dataIndex: 'message',
     key: 'message',
     render: (commitMessage: string) => {
-      console.info(commitMessage);
       const idxOfCommitBullet = commitMessage.indexOf('\n*');
       if (idxOfCommitBullet <= 0) {
         return commitMessage;
