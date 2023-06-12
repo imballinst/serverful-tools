@@ -3,8 +3,14 @@ import { LRUCache } from 'lru-cache';
 import fs from 'fs';
 import path from 'path';
 import { CACHE_OPTIONS, CacheExpireError } from '../common/cache';
+import { DiffContent } from '~/utils/types/diff';
 
-export type CommitCacheContent = any;
+export interface CommitCacheContent {
+  commitHash: string;
+  diff: DiffContent;
+  repository: string;
+  workspace: string;
+}
 
 const CACHE_FILE_PATH = path.join(process.cwd(), '.commit-cache');
 
@@ -41,14 +47,14 @@ export function storeCommitDiffToCache({
   diff,
   repository,
   workspace
-}: {
-  workspace: string;
-  repository: string;
-  commitHash: string;
-  diff: CommitCacheContent;
-}) {
+}: CommitCacheContent) {
   const key = getKey({ commitHash, repository, workspace });
-  commitsCache.set(key, diff);
+  commitsCache.set(key, {
+    commitHash,
+    diff,
+    repository,
+    workspace
+  });
 
   if (process.env.NODE_ENV === 'development') {
     fs.writeFileSync(

@@ -1,12 +1,32 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
-import { Button, Form, Input, Layout, Collapse, Typography, Space } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Button,
+  Form,
+  Input,
+  Layout,
+  Collapse,
+  Typography,
+  Space,
+  Spin,
+  message
+} from 'antd';
 import type { CollapseProps } from 'antd';
 import { CommitsTable } from '~/components/CommitsTable';
 import { useRouteLoaderData } from '@remix-run/react';
 import type { RootLoaderData } from '~/utils/types/rootLoader';
+import { DiffContentWithoutRaw } from '~/utils/types/diff';
+import type { V2_MetaFunction } from '@remix-run/node';
 
 const { Content } = Layout;
+
+export const meta: V2_MetaFunction = () => {
+  return [
+    {
+      title: 'Bitbucket Commit Review'
+    }
+  ];
+};
 
 interface CommitsFetchInformation {
   sessionId: string | null;
@@ -25,6 +45,7 @@ const FetchInformationForm = ({
 }) => {
   const [formInstance] =
     Form.useForm<Omit<CommitsFetchInformation, 'sessionId'>>();
+  const [toast, contextHolder] = message.useMessage();
 
   useEffect(() => {
     formInstance.setFieldsValue({
@@ -48,11 +69,11 @@ const FetchInformationForm = ({
     const json = await response.json();
 
     if (json.sessionId) {
+      toast.success('Authenticated!');
+
       setCommitsFetchInformation((oldState) => ({
         ...oldState,
-        sessionId: json.sessionId,
-        repo: values.repo,
-        workspace: values.workspace
+        sessionId: json.sessionId
       }));
 
       // Only set localStorage in dev.
@@ -81,7 +102,7 @@ const FetchInformationForm = ({
       label: 'Authorization',
       children: (
         <Form
-          name="basic"
+          name="authorization"
           autoComplete="off"
           onFinish={onSubmitAuthorization}
           layout="vertical"
@@ -96,7 +117,7 @@ const FetchInformationForm = ({
               }
             ]}
           >
-            <Input />
+            <Input type="password" />
           </Form.Item>
 
           <Button htmlType="submit">Submit</Button>
@@ -109,8 +130,10 @@ const FetchInformationForm = ({
     <Space direction="vertical" className="w-full">
       <Collapse items={items} />
 
+      {contextHolder}
+
       <Form
-        name="basic"
+        name="repositoryInformation"
         form={formInstance}
         autoComplete="off"
         onFinish={onSubmitRepoInformation}
@@ -154,10 +177,13 @@ export default function Commits() {
       workspace: '',
       sessionId: null
     });
-  const [commits, setCommits] = useState<any>(null);
+  const [commits, setCommits] = useState<DiffContentWithoutRaw[] | null>(null);
+  const [page, setPage] = useState(1);
   const [fetchCommitsError, setFetchCommitsError] = useState<string | null>(
     null
   );
+
+  const prevCommitsFetchInformation = useRef(commitsFetchInformation);
 
   useEffect(() => {
     const bitbucketFormState =
@@ -218,10 +244,13 @@ export default function Commits() {
         return;
       }
 
-      setCommits(null);
+      if (prevCommitsFetchInformation.current !== commitsFetchInformation) {
+        setCommits(null);
+      }
+
       setFetchCommitsError(null);
       const response = await fetch(
-        `/api/workspaces/${workspace}/repos/${repo}/commits`,
+        `/api/workspaces/${workspace}/repos/${repo}/commits?page=${page}`,
         {
           headers: {
             'x-session-id': sessionId
@@ -252,11 +281,19 @@ export default function Commits() {
       }
 
       const json = await response.json();
-      setCommits(json.commits);
+      setCommits((prev) => {
+        const prevCommits = prev || [];
+        return prevCommits.concat(json.commits);
+      });
     }
 
     fetchCommits();
-  }, [commitsFetchInformation, env.NODE_ENV]);
+  }, [commitsFetchInformation, page, env.NODE_ENV]);
+
+  useEffect(() => {
+    // Put this last for synchronization purposes.
+    prevCommitsFetchInformation.current = commitsFetchInformation;
+  }, [commitsFetchInformation]);
 
   return (
     <Content style={{ padding: 16 }}>
@@ -270,7 +307,18 @@ export default function Commits() {
         {fetchCommitsError && (
           <Typography.Paragraph>{fetchCommitsError}</Typography.Paragraph>
         )}
-        {commits && <CommitsTable data={commits.diff} />}
+        {!fetchCommitsError && !commits && (
+          <div className="w-full flex flex-row justify-center">
+            <Spin />
+          </div>
+        )}
+
+        {commits && (
+          <CommitsTable
+            data={commits}
+            onFetchMore={({ nextPage }) => setPage(nextPage)}
+          />
+        )}
       </Space>
     </Content>
   );

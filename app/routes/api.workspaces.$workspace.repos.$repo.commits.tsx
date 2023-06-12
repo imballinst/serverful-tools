@@ -7,6 +7,7 @@ import { sessionIdCookie } from '~/utils/server-utils/cookies/cookies';
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { workspace, repo } = params;
+  const { searchParams } = new URL(request.url);
   let sessionId = '';
 
   try {
@@ -24,7 +25,12 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     accessToken = getTokensBySessionId(sessionId).accessToken;
     if (!accessToken) return json({}, { status: 401 });
 
-    const commits = await getCommits({ workspace, repo, token: accessToken });
+    const commits = await getCommits({
+      workspace,
+      repo,
+      token: accessToken,
+      page: searchParams.get('page') || '1'
+    });
     return json({ commits });
   } catch (err) {
     if (err instanceof CacheExpireError) {

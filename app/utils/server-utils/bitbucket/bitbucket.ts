@@ -1,37 +1,45 @@
 import { Bitbucket } from 'bitbucket';
-import { getCommitDiffCache, storeCommitDiffToCache } from './cache';
+import {
+  CommitCacheContent,
+  getCommitDiffCache,
+  storeCommitDiffToCache
+} from './cache';
+import { DiffContentWithoutRaw } from '~/utils/types/diff';
 
 export async function getCommits({
   workspace,
   repo,
-  token
+  token,
+  page
 }: {
   workspace: string;
   repo: string;
   token: string;
+  page: string;
 }) {
-  let bitbucket = new Bitbucket({ auth: { token } });
-  let diff: any = [];
+  const bitbucket = new Bitbucket({ auth: { token } });
 
-  try {
-    const response = await bitbucket.commits.list({
-      repo_slug: repo,
-      workspace
-    });
-    const commits = response.data.values || [];
+  const response = await bitbucket.commits.list({
+    repo_slug: repo,
+    workspace,
+    include: 'master',
+    pagelen: 10,
+    page
+  });
+  const commits = response.data.values || [];
 
-    for (const commit of commits) {
-      if (!commit.hash) continue;
+  const diffResults: Array<CommitCacheContent> = await Promise.all(
+    commits.map(async (commit) => {
+      const commitHash = commit.hash!;
 
       try {
         const cachedDiff = await getCommitDiffCache({
-          commitHash: commit.hash,
+          commitHash,
           repository: repo,
           workspace
         });
         if (cachedDiff) {
-          diff.push(cachedDiff);
-          continue;
+          return cachedDiff;
         }
       } catch (err) {
         // No-op.
@@ -40,7 +48,7 @@ export async function getCommits({
       const tmpDiff = await bitbucket.commits.getDiff({
         repo_slug: repo,
         workspace,
-        spec: commit.hash
+        spec: commitHash
       });
       const diffLines: string[] = tmpDiff.data.split('\n');
       const diffInfo = {
@@ -57,29 +65,31 @@ export async function getCommits({
           diffInfo.deletions++;
         }
       }
-      const diffData = {
+      const diffData: CommitCacheContent['diff'] = {
         raw: tmpDiff.data,
         diffInfo,
-        url: `https://bitbucket.org/}/${repo}/commits/${commit.hash}`,
-        date: commit.date,
-        message: commit.message
+        url: `https://bitbucket.org/${workspace}/${repo}/commits/${commit.hash}`,
+        date: commit.date || '',
+        message: commit.message || ''
       };
 
-      storeCommitDiffToCache({
-        commitHash: commit.hash,
+      return {
+        commitHash,
         diff: diffData,
         repository: repo,
         workspace
-      });
-      diff.push(diffData);
-    }
+      };
+    })
+  );
 
-    return {
-      diff
-    };
-  } catch (err) {
-    console.error(err);
+  const commitsWithDiff: Array<DiffContentWithoutRaw> = [];
+
+  for (const diffResult of diffResults) {
+    storeCommitDiffToCache(diffResult);
+
+    const { raw: _raw, ...rest } = diffResult.diff;
+    commitsWithDiff.push(rest);
   }
 
-  return diff;
+  return commitsWithDiff;
 }
