@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Layout, Typography, Space, Spin } from 'antd';
+import { Layout, Space, Spin, Result } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+
 import { CommitsTable } from '~/components/CommitsTable';
 import { useRouteLoaderData } from '@remix-run/react';
 import type { RootLoaderData } from '~/utils/types/root-loader';
@@ -8,6 +10,7 @@ import type { V2_MetaFunction } from '@remix-run/node';
 import { isDev } from '~/utils/common/env';
 import type { CommitsFetchInformation } from '~/components/FetchInformationForm';
 import { FetchInformationForm } from '~/components/FetchInformationForm';
+import { ErrorCodes } from '~/utils/types/error-codes';
 
 const { Content } = Layout;
 
@@ -30,7 +33,7 @@ export default function Commits() {
     });
   const [commits, setCommits] = useState<DiffContentWithoutRaw[] | null>(null);
   const [page, setPage] = useState(1);
-  const [fetchCommitsError, setFetchCommitsError] = useState<string | null>(
+  const [fetchCommitsError, setFetchCommitsError] = useState<ErrorCodes | null>(
     null
   );
 
@@ -78,19 +81,17 @@ export default function Commits() {
       // Dev only: check if we have session ID or not since in Codespaces we tend to not being able
       // to have cookies.
       if (isDev(env.NODE_ENV) && !sessionId) {
-        setFetchCommitsError(
-          'Please input your Bitbucket repository token first.'
-        );
+        setFetchCommitsError(ErrorCodes.MISSING_REPOSITORY_TOKEN);
         return;
       }
 
       if (!workspace) {
-        setFetchCommitsError('Please input your Bitbucket workspace first.');
+        setFetchCommitsError(ErrorCodes.MISSING_WORKSPACE_NAME);
         return;
       }
 
       if (!repo) {
-        setFetchCommitsError('Please input your Bitbucket repository first.');
+        setFetchCommitsError(ErrorCodes.MISSING_REPOSITORY_NAME);
         return;
       }
 
@@ -112,25 +113,22 @@ export default function Commits() {
         const json = await response.json();
 
         switch (json.code) {
-          case '10000': {
-            setFetchCommitsError(
-              'Please input your Bitbucket repository token first.'
-            );
+          case ErrorCodes.UNAUTHENTICATED: {
+            setFetchCommitsError(ErrorCodes.UNAUTHENTICATED);
             break;
           }
-          case '10001': {
+          case ErrorCodes.SESSION_EXPIRED: {
             window.localStorage.removeItem('sessionId');
-            setFetchCommitsError(
-              'Session expired. Please input your Bitbucket repository token then try again.'
-            );
+            setFetchCommitsError(ErrorCodes.SESSION_EXPIRED);
             break;
           }
-          case '10002': {
+          case ErrorCodes.TOKEN_IS_INVALID: {
             window.localStorage.removeItem('sessionId');
-            setFetchCommitsError(
-              'Token is invalid. Please ensure your form is correct, then try again.'
-            );
+            setFetchCommitsError(ErrorCodes.TOKEN_IS_INVALID);
             break;
+          }
+          default: {
+            setFetchCommitsError(ErrorCodes.UNKNOWN_ERROR);
           }
         }
 
@@ -161,9 +159,7 @@ export default function Commits() {
           env={env}
         />
 
-        {fetchCommitsError && (
-          <Typography.Paragraph>{fetchCommitsError}</Typography.Paragraph>
-        )}
+        {fetchCommitsError && <FetchErrorResult code={fetchCommitsError} />}
         {!fetchCommitsError && !commits && (
           <div className="w-full flex flex-row justify-center">
             <Spin />
@@ -178,5 +174,61 @@ export default function Commits() {
         )}
       </Space>
     </Content>
+  );
+}
+
+// Composing functions.
+function FetchErrorResult({ code }: { code: ErrorCodes }) {
+  switch (code) {
+    case ErrorCodes.MISSING_REPOSITORY_TOKEN: {
+      return (
+        <Result
+          title="Please submit your repository token, then try again."
+          icon={<InfoCircleOutlined />}
+        />
+      );
+    }
+    case ErrorCodes.MISSING_WORKSPACE_NAME:
+    case ErrorCodes.MISSING_REPOSITORY_NAME: {
+      return (
+        <Result
+          title="Please submit your repository information, then try again."
+          icon={<InfoCircleOutlined />}
+        />
+      );
+    }
+    case ErrorCodes.UNAUTHENTICATED: {
+      return (
+        <Result
+          status="warning"
+          title="You are not authenticated yet. Submit your repository token, then try again."
+          icon={<InfoCircleOutlined />}
+        />
+      );
+    }
+    case ErrorCodes.TOKEN_IS_INVALID: {
+      return (
+        <Result
+          status="403"
+          title="Token is invalid or does not have the proper permissions. Ensure that you are using the correct token, then try again."
+        />
+      );
+    }
+    case ErrorCodes.SESSION_EXPIRED: {
+      return (
+        <Result
+          status="warning"
+          title="Session expired. Re-submit your repository token, then try again."
+        />
+      );
+    }
+  }
+
+  // Unknown error.
+  return (
+    <Result
+      status="500"
+      title="Something went wrong. Try again in a little bit."
+    />
   );
 }

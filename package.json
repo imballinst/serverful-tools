@@ -10,6 +10,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@ant-design/icons": "5.1.4",
     "@netlify/functions": "1.4.0",
     "@remix-run/css-bundle": "1.16.1",
     "@remix-run/netlify": "1.16.1",

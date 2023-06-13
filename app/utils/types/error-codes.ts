@@ -1,14 +1,20 @@
 export enum ErrorCodes {
+  // Server side errors.
   UNAUTHENTICATED = '10000',
   TOKEN_IS_INVALID = '10001',
-  SESSION_EXPIRED = '10002'
+  SESSION_EXPIRED = '10002',
+  UNKNOWN_ERROR = '10003',
+
+  // Client side errors.
+  MISSING_REPOSITORY_TOKEN = '20000',
+  MISSING_WORKSPACE_NAME = '20001',
+  MISSING_REPOSITORY_NAME = '20002'
 }
 
+// Error messages for server only.
 export const ErrorMessages = {
-  [ErrorCodes.UNAUTHENTICATED]:
-    'Please input your Bitbucket repository token first.',
-  [ErrorCodes.TOKEN_IS_INVALID]:
-    'Token is invalid. Please ensure your form is correct, then try again.',
-  [ErrorCodes.SESSION_EXPIRED]:
-    'Session expired. Please input your Bitbucket repository token then try again.'
+  [ErrorCodes.UNAUTHENTICATED]: 'unauthenticated',
+  [ErrorCodes.TOKEN_IS_INVALID]: 'invalid token',
+  [ErrorCodes.SESSION_EXPIRED]: 'session expired',
+  [ErrorCodes.UNKNOWN_ERROR]: 'unknown error'
 };

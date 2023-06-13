@@ -5,6 +5,7 @@ import { getCommits } from '~/utils/server-utils/bitbucket/bitbucket';
 import { CacheExpireError } from '~/utils/server-utils/common/cache';
 import { getTokensBySessionId } from '~/utils/server-utils/cookies/cache';
 import { sessionIdCookie } from '~/utils/server-utils/cookies/cookies';
+import { ErrorCodes, ErrorMessages } from '~/utils/types/error-codes';
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { workspace, repo } = params;
@@ -39,7 +40,10 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     if (err instanceof CacheExpireError) {
       if (!sessionId) {
         return json(
-          { code: '10000', message: 'unauthorized' },
+          {
+            code: ErrorCodes.UNAUTHENTICATED,
+            message: ErrorMessages[ErrorCodes.UNAUTHENTICATED].toLowerCase()
+          },
           {
             status: 401
           }
@@ -47,7 +51,10 @@ export const loader: LoaderFunction = async ({ request, params }) => {
       }
 
       return json(
-        { code: '10001', message: 'session expired' },
+        {
+          code: ErrorCodes.SESSION_EXPIRED,
+          message: ErrorMessages[ErrorCodes.SESSION_EXPIRED].toLowerCase()
+        },
         {
           status: 401,
           headers: {
@@ -62,9 +69,12 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     if (httpError.error?.error?.message) {
       if (httpError.error?.error?.message.includes('Token is invalid')) {
         return json(
-          { code: '10002', message: 'token is invalid' },
           {
-            status: 401,
+            code: ErrorCodes.TOKEN_IS_INVALID,
+            message: ErrorMessages[ErrorCodes.TOKEN_IS_INVALID].toLowerCase()
+          },
+          {
+            status: 403,
             headers: {
               'set-cookie': await sessionIdCookie.serialize('', {
                 expires: new Date(0)
@@ -75,6 +85,11 @@ export const loader: LoaderFunction = async ({ request, params }) => {
       }
     }
 
-    return json({ code: 'unknown', message: (err as Error).message });
+    return json({
+      code: ErrorCodes.UNKNOWN_ERROR,
+      message: `${ErrorMessages[ErrorCodes.UNKNOWN_ERROR]}: ${
+        (err as Error).message
+      }`
+    });
   }
 };
