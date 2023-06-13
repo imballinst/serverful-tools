@@ -1,10 +1,14 @@
 import { Bitbucket } from 'bitbucket';
-import {
-  CommitCacheContent,
-  getCommitDiffCache,
-  storeCommitDiffToCache
-} from './cache';
-import { DiffContentWithoutRaw } from '~/utils/types/diff';
+import type { CommitCacheContent } from './cache';
+import { getCommitDiffCache, storeCommitDiffToCache } from './cache';
+import type { DiffContentWithoutRaw } from '~/utils/types/diff';
+
+export interface HTTPError extends Error {
+  error: any | undefined;
+  headers: Headers | undefined;
+  request: any;
+  status: number;
+}
 
 export async function getCommits({
   workspace,

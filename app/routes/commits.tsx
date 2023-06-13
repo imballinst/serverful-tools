@@ -1,22 +1,13 @@
-import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import {
-  Button,
-  Form,
-  Input,
-  Layout,
-  Collapse,
-  Typography,
-  Space,
-  Spin,
-  message
-} from 'antd';
-import type { CollapseProps } from 'antd';
+import { Layout, Typography, Space, Spin } from 'antd';
 import { CommitsTable } from '~/components/CommitsTable';
 import { useRouteLoaderData } from '@remix-run/react';
-import type { RootLoaderData } from '~/utils/types/rootLoader';
-import { DiffContentWithoutRaw } from '~/utils/types/diff';
+import type { RootLoaderData } from '~/utils/types/root-loader';
+import type { DiffContentWithoutRaw } from '~/utils/types/diff';
 import type { V2_MetaFunction } from '@remix-run/node';
+import { isDev } from '~/utils/common/env';
+import type { CommitsFetchInformation } from '~/components/FetchInformationForm';
+import { FetchInformationForm } from '~/components/FetchInformationForm';
 
 const { Content } = Layout;
 
@@ -26,146 +17,6 @@ export const meta: V2_MetaFunction = () => {
       title: 'Bitbucket Commit Review'
     }
   ];
-};
-
-interface CommitsFetchInformation {
-  sessionId: string | null;
-  workspace: string;
-  repo: string;
-}
-
-const FetchInformationForm = ({
-  commitsFetchInformation,
-  setCommitsFetchInformation,
-  env
-}: {
-  commitsFetchInformation: CommitsFetchInformation;
-  setCommitsFetchInformation: Dispatch<SetStateAction<CommitsFetchInformation>>;
-  env: RootLoaderData['env'];
-}) => {
-  const [formInstance] =
-    Form.useForm<Omit<CommitsFetchInformation, 'sessionId'>>();
-  const [toast, contextHolder] = message.useMessage();
-
-  useEffect(() => {
-    formInstance.setFieldsValue({
-      repo: commitsFetchInformation.repo,
-      workspace: commitsFetchInformation.workspace
-    });
-  }, [
-    formInstance,
-    commitsFetchInformation.repo,
-    commitsFetchInformation.workspace
-  ]);
-
-  const onSubmitAuthorization = async (values: any) => {
-    const formData = new FormData();
-    formData.append('token', values.token);
-
-    const response = await fetch('/api/authorize', {
-      method: 'post',
-      body: formData
-    });
-    const json = await response.json();
-
-    if (json.sessionId) {
-      toast.success('Authenticated!');
-
-      setCommitsFetchInformation((oldState) => ({
-        ...oldState,
-        sessionId: json.sessionId
-      }));
-
-      // Only set localStorage in dev.
-      if (isDev(env.NODE_ENV)) {
-        window.localStorage.setItem('sessionId', json.sessionId);
-      }
-    }
-  };
-
-  const onSubmitRepoInformation = async (values: any) => {
-    setCommitsFetchInformation((oldState) => ({
-      ...oldState,
-      repo: values.repo,
-      workspace: values.workspace
-    }));
-
-    window.localStorage.setItem(
-      'bitbucketFormState',
-      JSON.stringify({ repo: values.repo, workspace: values.workspace })
-    );
-  };
-
-  const items: CollapseProps['items'] = [
-    {
-      key: 'authorization',
-      label: 'Authorization',
-      children: (
-        <Form
-          name="authorization"
-          autoComplete="off"
-          onFinish={onSubmitAuthorization}
-          layout="vertical"
-        >
-          <Form.Item
-            label="Bitbucket repository access token"
-            name="token"
-            rules={[
-              {
-                required: true,
-                message: 'Bitbucket repository access token is required'
-              }
-            ]}
-          >
-            <Input type="password" />
-          </Form.Item>
-
-          <Button htmlType="submit">Submit</Button>
-        </Form>
-      )
-    }
-  ];
-
-  return (
-    <Space direction="vertical" className="w-full">
-      <Collapse items={items} />
-
-      {contextHolder}
-
-      <Form
-        name="repositoryInformation"
-        form={formInstance}
-        autoComplete="off"
-        onFinish={onSubmitRepoInformation}
-        layout="vertical"
-        className="md:flex md:flex-row md:space-x-2 md:items-end mb-6"
-      >
-        <Form.Item
-          label="Bitbucket workspace"
-          name="workspace"
-          className="md:flex-1 md:mb-0"
-          rules={[
-            { required: true, message: 'Bitbucket workspace is required' }
-          ]}
-        >
-          <Input />
-        </Form.Item>
-
-        <Form.Item
-          label="Bitbucket repository"
-          name="repo"
-          className="md:flex-1 md:mb-0"
-          rules={[
-            { required: true, message: 'Bitbucket repository is required' }
-          ]}
-        >
-          <Input />
-        </Form.Item>
-
-        <Button htmlType="submit">Submit</Button>
-      </Form>
-    </Space>
-  );
 };
 
 export default function Commits() {
@@ -233,7 +84,6 @@ export default function Commits() {
         return;
       }
 
-      // TODO: maybe we can use something like react-hook-form here.
       if (!workspace) {
         setFetchCommitsError('Please input your Bitbucket workspace first.');
         return;
@@ -272,6 +122,13 @@ export default function Commits() {
             window.localStorage.removeItem('sessionId');
             setFetchCommitsError(
               'Session expired. Please input your Bitbucket repository token then try again.'
+            );
+            break;
+          }
+          case '10002': {
+            window.localStorage.removeItem('sessionId');
+            setFetchCommitsError(
+              'Token is invalid. Please ensure your form is correct, then try again.'
             );
             break;
           }
@@ -322,9 +179,4 @@ export default function Commits() {
       </Space>
     </Content>
   );
-}
-
-// Helper functions.
-function isDev(env: RootLoaderData['env']['NODE_ENV']) {
-  return env === 'development';
 }

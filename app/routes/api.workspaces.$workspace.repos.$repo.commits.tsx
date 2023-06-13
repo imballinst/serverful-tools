@@ -1,5 +1,6 @@
 import type { LoaderFunction } from '@remix-run/node';
 import { json } from '@remix-run/node';
+import type { HTTPError } from '~/utils/server-utils/bitbucket/bitbucket';
 import { getCommits } from '~/utils/server-utils/bitbucket/bitbucket';
 import { CacheExpireError } from '~/utils/server-utils/common/cache';
 import { getTokensBySessionId } from '~/utils/server-utils/cookies/cache';
@@ -23,7 +24,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     }
 
     accessToken = getTokensBySessionId(sessionId).accessToken;
-    if (!accessToken) return json({}, { status: 401 });
+    if (!accessToken) throw new CacheExpireError();
 
     const commits = await getCommits({
       workspace,
@@ -33,6 +34,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     });
     return json({ commits });
   } catch (err) {
+    const httpError = err as HTTPError;
+
     if (err instanceof CacheExpireError) {
       if (!sessionId) {
         return json(
@@ -54,6 +57,22 @@ export const loader: LoaderFunction = async ({ request, params }) => {
           }
         }
       );
+    }
+
+    if (httpError.error?.error?.message) {
+      if (httpError.error?.error?.message.includes('Token is invalid')) {
+        return json(
+          { code: '10002', message: 'token is invalid' },
+          {
+            status: 401,
+            headers: {
+              'set-cookie': await sessionIdCookie.serialize('', {
+                expires: new Date(0)
+              })
+            }
+          }
+        );
+      }
     }
 
     return json({ code: 'unknown', message: (err as Error).message });
