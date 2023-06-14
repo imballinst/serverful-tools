@@ -8,7 +8,8 @@ export enum ErrorCodes {
   // Client side errors.
   MISSING_REPOSITORY_TOKEN = '20000',
   MISSING_WORKSPACE_NAME = '20001',
-  MISSING_REPOSITORY_NAME = '20002'
+  MISSING_REPOSITORY_NAME = '20002',
+  MISSING_BRANCH_NAME = '20003'
 }
 
 // Error messages for server only.

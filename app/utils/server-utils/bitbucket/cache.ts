@@ -3,7 +3,7 @@ import { LRUCache } from 'lru-cache';
 import fs from 'fs';
 import path from 'path';
 import { CACHE_OPTIONS, CacheExpireError } from '../common/cache';
-import { DiffContent } from '~/utils/types/diff';
+import type { DiffContent } from '~/utils/types/diff';
 
 export interface CommitCacheContent {
   commitHash: string;

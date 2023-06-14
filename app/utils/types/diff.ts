@@ -10,3 +10,9 @@ export interface DiffContent {
 }
 
 export type DiffContentWithoutRaw = Omit<DiffContent, 'raw'>;
+
+// Commits response.
+export interface CommitsResponse {
+  commits: DiffContentWithoutRaw[];
+  nextPage?: number;
+}

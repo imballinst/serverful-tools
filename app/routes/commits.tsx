@@ -5,8 +5,13 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { CommitsTable } from '~/components/CommitsTable';
 import { useRouteLoaderData } from '@remix-run/react';
 import type { RootLoaderData } from '~/utils/types/root-loader';
-import type { DiffContentWithoutRaw } from '~/utils/types/diff';
+import type {
+  CommitsResponse,
+  DiffContentWithoutRaw
+} from '~/utils/types/diff';
 import type { V2_MetaFunction } from '@remix-run/node';
+import dayjs from 'dayjs';
+
 import { isDev } from '~/utils/common/env';
 import type { CommitsFetchInformation } from '~/components/FetchInformationForm';
 import { FetchInformationForm } from '~/components/FetchInformationForm';
@@ -29,6 +34,8 @@ export default function Commits() {
     useState<CommitsFetchInformation>({
       repo: '',
       workspace: '',
+      branch: '',
+      since: dayjs(),
       sessionId: null
     });
   const [commits, setCommits] = useState<DiffContentWithoutRaw[] | null>(null);
@@ -45,10 +52,13 @@ export default function Commits() {
 
     if (bitbucketFormState) {
       const parsed = JSON.parse(bitbucketFormState);
+
       setCommitsFetchInformation((oldState) => ({
         ...oldState,
         workspace: parsed.workspace,
-        repo: parsed.repo
+        repo: parsed.repo,
+        branch: parsed.branch,
+        since: dayjs()
       }));
     }
   }, []);
@@ -73,7 +83,8 @@ export default function Commits() {
 
   useEffect(() => {
     async function fetchCommits() {
-      const { repo, sessionId, workspace } = commitsFetchInformation;
+      const { repo, sessionId, workspace, branch, since } =
+        commitsFetchInformation;
 
       // No-op when sessionId is still null.
       if (sessionId === null) return;
@@ -95,51 +106,68 @@ export default function Commits() {
         return;
       }
 
+      if (!branch) {
+        setFetchCommitsError(ErrorCodes.MISSING_BRANCH_NAME);
+        return;
+      }
+
       if (prevCommitsFetchInformation.current !== commitsFetchInformation) {
         setCommits(null);
       }
 
       setFetchCommitsError(null);
-      const response = await fetch(
-        `/api/workspaces/${workspace}/repos/${repo}/commits?page=${page}`,
-        {
-          headers: {
-            'x-session-id': sessionId
+
+      // Fetch.
+      const searchParams = new URLSearchParams();
+      let nextPage: number | undefined = page;
+
+      if (nextPage) searchParams.append('page', `${nextPage}`);
+      if (since) searchParams.append('since', since.toISOString());
+
+      while (nextPage !== undefined) {
+        const response = await fetch(
+          `/api/workspaces/${workspace}/repos/${repo}/commits?${searchParams.toString()}`,
+          {
+            headers: {
+              'x-session-id': sessionId
+            }
           }
+        );
+
+        if (response.status !== 200) {
+          const json = await response.json();
+
+          switch (json.code) {
+            case ErrorCodes.UNAUTHENTICATED: {
+              setFetchCommitsError(ErrorCodes.UNAUTHENTICATED);
+              break;
+            }
+            case ErrorCodes.SESSION_EXPIRED: {
+              window.localStorage.removeItem('sessionId');
+              setFetchCommitsError(ErrorCodes.SESSION_EXPIRED);
+              break;
+            }
+            case ErrorCodes.TOKEN_IS_INVALID: {
+              window.localStorage.removeItem('sessionId');
+              setFetchCommitsError(ErrorCodes.TOKEN_IS_INVALID);
+              break;
+            }
+            default: {
+              setFetchCommitsError(ErrorCodes.UNKNOWN_ERROR);
+            }
+          }
+
+          return;
         }
-      );
 
-      if (response.status !== 200) {
-        const json = await response.json();
+        const json: CommitsResponse = await response.json();
+        setCommits((prev) => {
+          const prevCommits = prev || [];
+          return prevCommits.concat(json.commits);
+        });
 
-        switch (json.code) {
-          case ErrorCodes.UNAUTHENTICATED: {
-            setFetchCommitsError(ErrorCodes.UNAUTHENTICATED);
-            break;
-          }
-          case ErrorCodes.SESSION_EXPIRED: {
-            window.localStorage.removeItem('sessionId');
-            setFetchCommitsError(ErrorCodes.SESSION_EXPIRED);
-            break;
-          }
-          case ErrorCodes.TOKEN_IS_INVALID: {
-            window.localStorage.removeItem('sessionId');
-            setFetchCommitsError(ErrorCodes.TOKEN_IS_INVALID);
-            break;
-          }
-          default: {
-            setFetchCommitsError(ErrorCodes.UNKNOWN_ERROR);
-          }
-        }
-
-        return;
+        nextPage = json.nextPage;
       }
-
-      const json = await response.json();
-      setCommits((prev) => {
-        const prevCommits = prev || [];
-        return prevCommits.concat(json.commits);
-      });
     }
 
     fetchCommits();
@@ -169,7 +197,12 @@ export default function Commits() {
         {commits && (
           <CommitsTable
             data={commits}
-            onFetchMore={({ nextPage }) => setPage(nextPage)}
+            currentPage={page}
+            onFetchMore={
+              commitsFetchInformation.since
+                ? undefined
+                : ({ nextPage }) => setPage(nextPage)
+            }
           />
         )}
       </Space>
@@ -183,16 +216,17 @@ function FetchErrorResult({ code }: { code: ErrorCodes }) {
     case ErrorCodes.MISSING_REPOSITORY_TOKEN: {
       return (
         <Result
-          title="Please submit your repository token, then try again."
+          title="Please verify your repository token, then try again."
           icon={<InfoCircleOutlined />}
         />
       );
     }
     case ErrorCodes.MISSING_WORKSPACE_NAME:
-    case ErrorCodes.MISSING_REPOSITORY_NAME: {
+    case ErrorCodes.MISSING_REPOSITORY_NAME:
+    case ErrorCodes.MISSING_BRANCH_NAME: {
       return (
         <Result
-          title="Please submit your repository information, then try again."
+          title="Please verify your repository information, then try again."
           icon={<InfoCircleOutlined />}
         />
       );

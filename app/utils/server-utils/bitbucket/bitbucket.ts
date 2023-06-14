@@ -13,11 +13,13 @@ export interface HTTPError extends Error {
 export async function getCommits({
   workspace,
   repo,
+  branch,
   token,
   page
 }: {
   workspace: string;
   repo: string;
+  branch: string | undefined;
   token: string;
   page: string;
 }) {
@@ -26,7 +28,7 @@ export async function getCommits({
   const response = await bitbucket.commits.list({
     repo_slug: repo,
     workspace,
-    include: 'master',
+    include: branch,
     pagelen: 10,
     page
   });
@@ -37,7 +39,7 @@ export async function getCommits({
       const commitHash = commit.hash!;
 
       try {
-        const cachedDiff = await getCommitDiffCache({
+        const cachedDiff = getCommitDiffCache({
           commitHash,
           repository: repo,
           workspace
@@ -87,7 +89,6 @@ export async function getCommits({
   );
 
   const commitsWithDiff: Array<DiffContentWithoutRaw> = [];
-
   for (const diffResult of diffResults) {
     storeCommitDiffToCache(diffResult);
 

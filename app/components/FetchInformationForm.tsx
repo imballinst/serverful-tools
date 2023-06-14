@@ -1,14 +1,28 @@
 import type { CollapseProps } from 'antd';
-import { Form, message, Input, Button, Space, Collapse } from 'antd';
+import {
+  Form,
+  message,
+  Input,
+  Button,
+  Space,
+  Collapse,
+  DatePicker
+} from 'antd';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect } from 'react';
+
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+
 import { isDev } from '~/utils/common/env';
 import type { RootLoaderData } from '~/utils/types/root-loader';
 
 export interface CommitsFetchInformation {
   sessionId: string | null;
   workspace: string;
+  since: Dayjs | null;
   repo: string;
+  branch: string;
 }
 
 export function FetchInformationForm({
@@ -27,12 +41,15 @@ export function FetchInformationForm({
   useEffect(() => {
     formInstance.setFieldsValue({
       repo: commitsFetchInformation.repo,
-      workspace: commitsFetchInformation.workspace
+      workspace: commitsFetchInformation.workspace,
+      branch: commitsFetchInformation.branch,
+      since: dayjs().subtract(7, 'days')
     });
   }, [
     formInstance,
     commitsFetchInformation.repo,
-    commitsFetchInformation.workspace
+    commitsFetchInformation.workspace,
+    commitsFetchInformation.branch
   ]);
 
   const onSubmitAuthorization = async (values: any) => {
@@ -60,16 +77,24 @@ export function FetchInformationForm({
     }
   };
 
-  const onSubmitRepoInformation = async (values: any) => {
+  const onSubmitRepoInformation = async (
+    values: Omit<CommitsFetchInformation, 'sessionId'>
+  ) => {
     setCommitsFetchInformation((oldState) => ({
       ...oldState,
       repo: values.repo,
-      workspace: values.workspace
+      workspace: values.workspace,
+      branch: values.branch,
+      since: values.since
     }));
 
     window.localStorage.setItem(
       'bitbucketFormState',
-      JSON.stringify({ repo: values.repo, workspace: values.workspace })
+      JSON.stringify({
+        repo: values.repo,
+        workspace: values.workspace,
+        branch: values.branch
+      })
     );
   };
 
@@ -94,7 +119,7 @@ export function FetchInformationForm({
               }
             ]}
           >
-            <Input type="password" />
+            <Input.Password />
           </Form.Item>
 
           <Button htmlType="submit">Submit</Button>
@@ -115,7 +140,7 @@ export function FetchInformationForm({
         autoComplete="off"
         onFinish={onSubmitRepoInformation}
         layout="vertical"
-        className="md:flex md:flex-row md:space-x-2 md:items-end mb-6"
+        className="md:flex md:space-x-2 mb-6"
       >
         <Form.Item
           label="Bitbucket workspace"
@@ -139,7 +164,26 @@ export function FetchInformationForm({
           <Input />
         </Form.Item>
 
-        <Button htmlType="submit">Submit</Button>
+        <Form.Item
+          label="Branch"
+          name="branch"
+          className="md:flex-1 md:mb-0"
+          rules={[{ required: true, message: 'Branch is required' }]}
+        >
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Since date"
+          name="since"
+          className="md:flex-1 md:mb-0"
+        >
+          <DatePicker className="w-full" showTime />
+        </Form.Item>
+
+        <Button htmlType="submit" className="md:mt-[30px]">
+          Submit
+        </Button>
       </Form>
     </Space>
   );

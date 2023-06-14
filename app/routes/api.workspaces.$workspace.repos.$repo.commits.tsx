@@ -5,6 +5,7 @@ import { getCommits } from '~/utils/server-utils/bitbucket/bitbucket';
 import { CacheExpireError } from '~/utils/server-utils/common/cache';
 import { getTokensBySessionId } from '~/utils/server-utils/cookies/cache';
 import { sessionIdCookie } from '~/utils/server-utils/cookies/cookies';
+import type { CommitsResponse } from '~/utils/types/diff';
 import { ErrorCodes, ErrorMessages } from '~/utils/types/error-codes';
 
 export const loader: LoaderFunction = async ({ request, params }) => {
@@ -27,14 +28,48 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     accessToken = getTokensBySessionId(sessionId).accessToken;
     if (!accessToken) throw new CacheExpireError();
 
-    const commits = await getCommits({
+    const {
+      page = '1',
+      branch,
+      since
+    } = Object.fromEntries(searchParams.entries());
+
+    const currentPage = searchParams.get('page') || '1';
+    let commits = await getCommits({
       workspace,
       repo,
+      branch,
       token: accessToken,
-      page: searchParams.get('page') || '1'
+      page
     });
-    return json({ commits });
+
+    // Filter by the `since` query parameter.
+    let nextPage: number | undefined;
+
+    if (since) {
+      const sinceDate = new Date(since);
+
+      const lastCommitBeforeFilter = commits.at(-1);
+      if (lastCommitBeforeFilter) {
+        const lastCommitDate = new Date(lastCommitBeforeFilter.date);
+
+        if (lastCommitDate > sinceDate) {
+          nextPage = Number(currentPage) + 1;
+        }
+      }
+
+      // Filter commits, in case there are 'later' commits.
+      commits = commits.filter((commit) => {
+        const commitDate = new Date(commit.date);
+        return commitDate > sinceDate;
+      });
+    }
+
+    const response: CommitsResponse = { commits, nextPage };
+
+    return json(response);
   } catch (err) {
+    console.error(err);
     const httpError = err as HTTPError;
 
     if (err instanceof CacheExpireError) {
@@ -85,11 +120,16 @@ export const loader: LoaderFunction = async ({ request, params }) => {
       }
     }
 
-    return json({
-      code: ErrorCodes.UNKNOWN_ERROR,
-      message: `${ErrorMessages[ErrorCodes.UNKNOWN_ERROR]}: ${
-        (err as Error).message
-      }`
-    });
+    return json(
+      {
+        code: ErrorCodes.UNKNOWN_ERROR,
+        message: `${ErrorMessages[ErrorCodes.UNKNOWN_ERROR]}: ${
+          (err as Error).message
+        }`
+      },
+      {
+        status: 500
+      }
+    );
   }
 };

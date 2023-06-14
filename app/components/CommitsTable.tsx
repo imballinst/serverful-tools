@@ -1,6 +1,6 @@
 import { Button, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { DiffContentWithoutRaw } from '~/utils/types/diff';
+import type { DiffContentWithoutRaw } from '~/utils/types/diff';
 
 const columns: TableColumnsType<DiffContentWithoutRaw> = [
   {
@@ -33,7 +33,11 @@ const columns: TableColumnsType<DiffContentWithoutRaw> = [
       const formatted = new Intl.DateTimeFormat(window.navigator.language, {
         day: '2-digit',
         month: 'long',
-        year: 'numeric'
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'long'
       }).format(new Date(date));
       return <span>{formatted}</span>;
     }
@@ -60,21 +64,26 @@ const PAGE_LENGTH = 10;
 
 export const CommitsTable = ({
   data,
+  currentPage,
   onFetchMore
 }: {
   data: DiffContentWithoutRaw[];
-  onFetchMore: ({ nextPage }: { nextPage: number }) => void;
+  currentPage: number;
+  onFetchMore?: ({ nextPage }: { nextPage: number }) => void;
 }) => {
   function Footer() {
+    const nextPage = Math.floor(data.length / PAGE_LENGTH) + 1;
     return (
-      <Button
-        onClick={() => {
-          const nextPage = data.length / PAGE_LENGTH + 1;
-          onFetchMore({ nextPage });
-        }}
-      >
-        Fetch more commits
-      </Button>
+      onFetchMore &&
+      currentPage !== nextPage && (
+        <Button
+          onClick={() => {
+            onFetchMore({ nextPage });
+          }}
+        >
+          Fetch more commits
+        </Button>
+      )
     );
   }
 
