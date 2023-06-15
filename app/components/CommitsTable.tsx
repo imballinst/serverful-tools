@@ -1,4 +1,4 @@
-import { Button, Table } from 'antd';
+import { Button, Spin, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { DiffContentWithoutRaw } from '~/utils/types/diff';
 
@@ -64,26 +64,34 @@ const PAGE_LENGTH = 10;
 
 export const CommitsTable = ({
   data,
+  isFetching,
   currentPage,
   onFetchMore
 }: {
   data: DiffContentWithoutRaw[];
+  isFetching: boolean;
   currentPage: number;
   onFetchMore?: ({ nextPage }: { nextPage: number }) => void;
 }) => {
   function Footer() {
     const nextPage = Math.floor(data.length / PAGE_LENGTH) + 1;
+
     return (
-      onFetchMore &&
-      currentPage !== nextPage && (
-        <Button
-          onClick={() => {
-            onFetchMore({ nextPage });
-          }}
-        >
-          Fetch more commits
-        </Button>
-      )
+      <div>
+        {onFetchMore && (
+          <Button
+            className="mr-4"
+            disabled={isFetching}
+            onClick={() => {
+              onFetchMore({ nextPage });
+            }}
+          >
+            Fetch more commits
+          </Button>
+        )}
+
+        {isFetching && <Spin />}
+      </div>
     );
   }
 

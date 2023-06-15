@@ -10,12 +10,12 @@ import type {
   DiffContentWithoutRaw
 } from '~/utils/types/diff';
 import type { V2_MetaFunction } from '@remix-run/node';
-import dayjs from 'dayjs';
 
 import { isDev } from '~/utils/common/env';
 import type { CommitsFetchInformation } from '~/components/FetchInformationForm';
 import { FetchInformationForm } from '~/components/FetchInformationForm';
 import { ErrorCodes } from '~/utils/types/error-codes';
+import { getCommitSince } from '~/utils/client-utils/date';
 
 const { Content } = Layout;
 
@@ -35,7 +35,7 @@ export default function Commits() {
       repo: '',
       workspace: '',
       branch: '',
-      since: dayjs(),
+      since: getCommitSince(),
       sessionId: null
     });
   const [commits, setCommits] = useState<DiffContentWithoutRaw[] | null>(null);
@@ -43,6 +43,7 @@ export default function Commits() {
   const [fetchCommitsError, setFetchCommitsError] = useState<ErrorCodes | null>(
     null
   );
+  const [fetchState, setFetchState] = useState<'idle' | 'fetching'>('idle');
 
   const prevCommitsFetchInformation = useRef(commitsFetchInformation);
 
@@ -58,7 +59,7 @@ export default function Commits() {
         workspace: parsed.workspace,
         repo: parsed.repo,
         branch: parsed.branch,
-        since: dayjs()
+        since: getCommitSince()
       }));
     }
   }, []);
@@ -118,13 +119,15 @@ export default function Commits() {
       setFetchCommitsError(null);
 
       // Fetch.
-      const searchParams = new URLSearchParams();
       let nextPage: number | undefined = page;
 
-      if (nextPage) searchParams.append('page', `${nextPage}`);
-      if (since) searchParams.append('since', since.toISOString());
+      setFetchState('fetching');
 
       while (nextPage !== undefined) {
+        const searchParams = new URLSearchParams({ branch });
+        if (nextPage) searchParams.append('page', `${nextPage}`);
+        if (since) searchParams.append('since', since.toISOString());
+
         const response = await fetch(
           `/api/workspaces/${workspace}/repos/${repo}/commits?${searchParams.toString()}`,
           {
@@ -168,6 +171,8 @@ export default function Commits() {
 
         nextPage = json.nextPage;
       }
+
+      setFetchState('idle');
     }
 
     fetchCommits();
@@ -197,6 +202,7 @@ export default function Commits() {
         {commits && (
           <CommitsTable
             data={commits}
+            isFetching={fetchState === 'fetching'}
             currentPage={page}
             onFetchMore={
               commitsFetchInformation.since

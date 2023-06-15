@@ -11,11 +11,11 @@ import {
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect } from 'react';
 
-import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 
 import { isDev } from '~/utils/common/env';
 import type { RootLoaderData } from '~/utils/types/root-loader';
+import { getCommitSince } from '~/utils/client-utils/date';
 
 export interface CommitsFetchInformation {
   sessionId: string | null;
@@ -43,7 +43,7 @@ export function FetchInformationForm({
       repo: commitsFetchInformation.repo,
       workspace: commitsFetchInformation.workspace,
       branch: commitsFetchInformation.branch,
-      since: dayjs().subtract(7, 'days')
+      since: getCommitSince()
     });
   }, [
     formInstance,

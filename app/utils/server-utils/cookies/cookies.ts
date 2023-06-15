@@ -1,8 +1,10 @@
 import { createCookie } from '@remix-run/node';
 
 const DOMAIN =
-  process.env.DOMAIN ||
-  `${process.env.CODESPACE_NAME}-3000.preview.app.github.dev`;
+  process.env.NODE_ENV === 'development'
+    ? process.env.DOMAIN ||
+      `${process.env.CODESPACE_NAME}-3000.preview.app.github.dev`
+    : 'bb-commit-review.netlify.app';
 
 export const getCookieExpires = () => new Date(Date.now() + 60_000 * 1000);
 
