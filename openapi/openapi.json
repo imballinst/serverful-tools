@@ -1,0 +1,315 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "A bit of everything - OpenAPI 3.0",
+    "description": "This is a toolings Server based on the OpenAPI 3.0 specification.",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "Try Ajitiono",
+      "email": "ballinst@gmail.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/license/mit"
+    },
+    "version": "1.0.0-beta.0"
+  },
+  "externalDocs": {
+    "description": "Find out more about Swagger",
+    "url": "http://swagger.io"
+  },
+  "servers": [
+    {
+      "url": "https://bb-commit-review.netlify.app/api"
+    }
+  ],
+  "tags": [
+    {
+      "name": "bitbucket",
+      "description": "Bitbucket toolings",
+      "externalDocs": {
+        "description": "More about Bitbucket REST API",
+        "url": "https://developer.atlassian.com/cloud/bitbucket/rest"
+      }
+    }
+  ],
+  "paths": {
+    "/v1/bitbucket/authorize": {
+      "post": {
+        "operationId": "AuthorizeBitbucketV1",
+        "summary": "Create a session using a Bitbucket repository token",
+        "description": "Create a session using a Bitbucket repository token",
+        "tags": ["bitbucket"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizeBitbucketRequestV1"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizeBitbucketRequestV1"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizeBitbucketRequestV1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeBitbucketResponseV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bitbucket/workspaces/{workspace}/repos/{repo}/commits": {
+      "get": {
+        "operationId": "GetCommitsBitbucketV1",
+        "summary": "Get the list of Bitbucket commits including the number of changed lines",
+        "description": "Get the list of Bitbucket commits including the number of changed lines",
+        "tags": ["bitbucket"],
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "description": "The Bitbucket workspace where the repository belongs",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "description": "The Bitbucket repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "The current page where list of commits will be fetched, where page size is 10 (cannot be changed)",
+            "schema": {
+              "type": "string",
+              "example": "1",
+              "default": "1"
+            }
+          },
+          {
+            "name": "branch",
+            "in": "query",
+            "description": "The Bitbucket repository branch. If not provided, it will get commits from all branches",
+            "schema": {
+              "type": "string",
+              "example": "main"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "The Bitbucket workspace where the repository belongs. If provided, then all commits older than the provided date will be trimmed out",
+            "schema": {
+              "type": "string",
+              "example": "2023-06-24T05:27:53.890Z"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BitbucketCommitsV1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated or session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid Bitbucket repository token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthorizeBitbucketRequestV1": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "sampleToken",
+            "description": "The Bitbucket repository token. It should have at least read access to the repository's commits."
+          }
+        },
+        "xml": {
+          "name": "bitbucketauthorizerequestv1"
+        }
+      },
+      "AuthorizeBitbucketResponseV1": {
+        "type": "object",
+        "required": ["sessionId"],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "example": "sampleSessionId"
+          }
+        },
+        "xml": {
+          "name": "bitbucketauthorizeresponsev1"
+        }
+      },
+      "GetCommitsBitbucketResponseV1": {
+        "type": "object",
+        "required": ["commits"],
+        "properties": {
+          "commits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BitbucketCommitsV1"
+            }
+          }
+        },
+        "xml": {
+          "name": "bitbucketauthorizeresponsev1"
+        }
+      },
+      "BitbucketCommitsV1": {
+        "type": "object",
+        "required": ["diffInfo", "url", "date", "message"],
+        "properties": {
+          "diffInfo": {
+            "type": "object",
+            "properties": {
+              "additions": {
+                "type": "number"
+              },
+              "deletions": {
+                "type": "number"
+              }
+            },
+            "example": {
+              "additions": "3",
+              "deletions": "2"
+            }
+          },
+          "url": {
+            "type": "string",
+            "example": "https://bitbucket.org/workspace/repo/commits/55f470fbd067cdcf5cadff0aef7b74befcb80be3"
+          },
+          "date": { "type": "string", "example": "2023-06-24T05:27:53.890Z" },
+          "message": { "type": "string", "example": "test commit" }
+        },
+        "xml": {
+          "name": "bitbucketauthorizeresponsev1"
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "10000"
+          },
+          "message": {
+            "type": "string",
+            "example": "invalid input: required fields are missing"
+          }
+        },
+        "xml": {
+          "name": "bitbucketauthorizeresponsev1"
+        }
+      }
+    },
+    "requestBodies": {
+      "AuthorizeBitbucketRequestV1": {
+        "description": "Bitbucket authorize request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AuthorizeBitbucketRequestV1"
+            }
+          },
+          "application/xml": {
+            "schema": {
+              "$ref": "#/components/schemas/AuthorizeBitbucketRequestV1"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bitbucket_session_id_header": {
+        "type": "apiKey",
+        "description": "Bitbucket session ID",
+        "name": "x-bitbucket-session-id",
+        "in": "header"
+      },
+      "bitbucket_session_id_cookie": {
+        "type": "apiKey",
+        "description": "Bitbucket session ID",
+        "name": "x-bitbucket-session-id",
+        "in": "cookie"
+      },
+      "bitbucket_repository_token": {
+        "type": "apiKey",
+        "description": "Bitbucket repository token",
+        "in": "header",
+        "name": "x-bitbucket-repository-token"
+      }
+    }
+  }
+}
