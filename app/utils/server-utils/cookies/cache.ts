@@ -7,6 +7,7 @@ import { CACHE_OPTIONS, CacheExpireError } from '../common/cache';
 
 export interface CacheContent {
   accessToken: string;
+  gitlabToken: string;
 }
 
 const CACHE_FILE_PATH = path.join(process.cwd(), '.session-cache');

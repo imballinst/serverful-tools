@@ -9,13 +9,15 @@ import {
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const token = formData.get('token')?.toString();
+  const tokenType = formData.get('tokenType')?.toString() || 'bitbucket';
 
   if (!token) {
     return json({}, { status: 400 });
   }
 
   const sessionId = generateSessionId({
-    accessToken: token
+    accessToken: tokenType === 'bitbucket' ? token : '',
+    gitlabToken: tokenType === 'gitlab' ? token : ''
   });
 
   const headers = new Headers();
