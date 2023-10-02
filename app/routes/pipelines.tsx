@@ -109,22 +109,54 @@ export default function Pipelines() {
       searchEntries.page = page;
 
       setFetchState('fetching');
-      
-      const response = await fetch(
-        `/api/gitlab/${gitlabProjectPath}/pipelines?${new URLSearchParams(
-          searchEntries
-        ).toString()}`,
-        {
-          headers: {
-            'x-session-id': sessionId
-          }
-        }
-      );
-      const json = await response.json();
 
-      setPipelines(prev => {
-        return [...prev || [], ...json]
-      });
+      try {
+        const response = await fetch(
+          `/api/gitlab/${gitlabProjectPath}/pipelines?${new URLSearchParams(
+            searchEntries
+          ).toString()}`,
+          {
+            headers: {
+              'x-session-id': sessionId
+            }
+          }
+        );
+
+        if (response.status !== 200) {
+          const json = await response.json();
+
+          switch (json.code) {
+            case ErrorCodes.UNAUTHENTICATED: {
+              setFetchPipelinesError(ErrorCodes.UNAUTHENTICATED);
+              break;
+            }
+            case ErrorCodes.SESSION_EXPIRED: {
+              window.localStorage.removeItem('sessionId');
+              setFetchPipelinesError(ErrorCodes.SESSION_EXPIRED);
+              break;
+            }
+            case ErrorCodes.TOKEN_IS_INVALID: {
+              window.localStorage.removeItem('sessionId');
+              setFetchPipelinesError(ErrorCodes.TOKEN_IS_INVALID);
+              break;
+            }
+            default: {
+              setFetchPipelinesError(ErrorCodes.UNKNOWN_ERROR);
+            }
+          }
+
+          return;
+        }
+
+        const json = await response.json();
+
+        setPipelines(prev => {
+          return [...prev || [], ...json]
+        });
+      } catch (err) {
+        // No-op.
+      }
+      
       setFetchState('idle');
     }
 
