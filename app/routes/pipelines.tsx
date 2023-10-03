@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Layout, Space, Spin, Result } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
@@ -150,13 +150,13 @@ export default function Pipelines() {
 
         const json = await response.json();
 
-        setPipelines(prev => {
-          return [...prev || [], ...json]
+        setPipelines((prev) => {
+          return [...(prev || []), ...json];
         });
       } catch (err) {
         // No-op.
       }
-      
+
       setFetchState('idle');
     }
 
@@ -168,12 +168,20 @@ export default function Pipelines() {
     prevPipelinesFetchInformation.current = pipelinesFetchInformation;
   }, [pipelinesFetchInformation]);
 
+  const memoizedSetPipelinesFetchInformation = useCallback(
+    (...params: Parameters<typeof setPipelinesFetchInformation>) => {
+      setPipelinesFetchInformation(...params);
+      setPage(1);
+    },
+    []
+  );
+
   return (
     <Content style={{ padding: 16 }}>
       <Space direction="vertical" className="w-full">
         <PipelinesFetchInformationForm
           pipelinesFetchInformation={pipelinesFetchInformation}
-          setPipelinesFetchInformation={setPipelinesFetchInformation}
+          setPipelinesFetchInformation={memoizedSetPipelinesFetchInformation}
           env={env}
         />
 

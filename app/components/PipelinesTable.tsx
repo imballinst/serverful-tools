@@ -61,20 +61,26 @@ export const PipelinesTable = ({
 }) => {
   function Footer() {
     return (
-      <div>
-        {onFetchMore && (
-          <Button
-            className="mr-4"
-            disabled={isFetching}
-            onClick={() => {
-              onFetchMore({ nextPage: currentPage + 1 });
-            }}
-          >
-            Fetch more pipelines
-          </Button>
-        )}
+      <div className="flex">
+        <div className="mr-1">
+          {onFetchMore && (
+            <Button
+              className="mr-4"
+              disabled={isFetching}
+              onClick={() => {
+                onFetchMore({ nextPage: currentPage + 1 });
+              }}
+            >
+              Fetch more pipelines
+            </Button>
+          )}
 
-        {isFetching && <Spin />}
+          {isFetching && <Spin />}
+        </div>
+
+        <div className="flex items-center">
+          Current GitLab pipeline page: {currentPage}
+        </div>
       </div>
     );
   }
