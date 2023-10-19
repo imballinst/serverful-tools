@@ -62,10 +62,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
       const pipelineVariables = pipelinesVariables[i].data;
       if (pipelineVariables.length === 0) continue
 
-      const isIncluded = pipelineVariables.every((variable: any) => {
+      const isIncluded = pipelineVariables.some((variable: any) => {
         const { key, value } = variable;
-        if (!pipelineVariablesToFilter[key]) return true;
-
         return pipelineVariablesToFilter[key] === value;
       });
 
