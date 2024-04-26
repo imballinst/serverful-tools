@@ -158,7 +158,6 @@ export function PipelinesFetchInformationForm({
           label="Variables"
           name="variables"
           className="md:flex-1 md:mb-0"
-          rules={[{ required: true, message: 'Variables are required' }]}
         >
           <Input placeholder="HELLO=world, PING=pong" />
         </Form.Item>
