@@ -57,7 +57,10 @@ export const GET: APIRoute = async ({ request }) => {
           }
         }
       );
-      return response.data;
+      const data = response.data;
+      cache.set(key, data);
+
+      return data;
     })
   );
 
@@ -66,7 +69,6 @@ export const GET: APIRoute = async ({ request }) => {
 
   for (let i = 0; i < pipelines.length; i++) {
     const pipelineVariables = pipelinesVariables[i];
-    cache.set(pipelineVariableKeys[i], pipelineVariables);
     let isIncluded = true;
 
     if (hasFilter) {
@@ -77,7 +79,13 @@ export const GET: APIRoute = async ({ request }) => {
     }
 
     if (!isIncluded) continue;
-    result.push({ ...pipelines[i], variables: pipelineVariables });
+
+    result.push({
+      link: pipelines[i].web_url,
+      status: pipelines[i].status,
+      createdAt: pipelines[i].created_at,
+      variables: pipelineVariables
+    });
   }
 
   return new Response(JSON.stringify(result), {
