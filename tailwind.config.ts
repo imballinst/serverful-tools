@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss';
 
 export default {
   darkMode: ['class'],
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+  content: ['./src/**/*.{js,jsx,ts,tsx,astro}'],
   theme: {
     extend: {
       borderRadius: {
@@ -31,7 +31,8 @@ export default {
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))'
+          foreground: 'hsl(var(--muted-foreground))',
+          'foreground-input': 'hsl(var(--muted-foreground-input))'
         },
         accent: {
           DEFAULT: 'hsl(var(--accent))',

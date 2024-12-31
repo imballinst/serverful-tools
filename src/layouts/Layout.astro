@@ -1,6 +1,9 @@
 ---
 import { AppSidebar } from '@/components/AppSidebar';
 import '@/styles/globals.css';
+
+const pathname = new URL(Astro.request.url).pathname;
+const { title } = Astro.props;
 ---
 
 <!doctype html>
@@ -13,8 +16,12 @@ import '@/styles/globals.css';
     <title>Astro Basics</title>
   </head>
   <body>
-    <AppSidebar client:load>
-      <slot />
+    <AppSidebar pathname={pathname} client:load>
+      <main class="py-3 px-4 flex-1">
+        <h1 class="mb-4 text-xl font-semibold">{title}</h1>
+
+        <slot />
+      </main>
     </AppSidebar>
   </body>
 </html>
