@@ -1,4 +1,5 @@
 import { Link } from '@/components/Link';
+import { QueryProvider } from '@/components/QueryProvider';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -18,7 +19,11 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import type { GitLabPipelinesResponse } from '@/models/pipelines';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { LoaderCircleIcon } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -28,7 +33,9 @@ const formSchema = z.object({
   pipelineVariablesFilter: z.string()
 });
 
-export function ListPipelines() {
+const FETCH_PARAMS_KEY = 'gitlab:listpipelines:fetchparams';
+
+function ListPipelinesComponent() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -37,9 +44,37 @@ export function ListPipelines() {
       pipelineVariablesFilter: ''
     }
   });
+  const [fetchParams, setFetchParams] = useState<z.infer<typeof formSchema>>(
+    form.getValues()
+  );
+
+  const pipelinesQuery = useInfiniteQuery({
+    queryKey: ['pipelines', fetchParams],
+    queryFn: ({ pageParam }) =>
+      fetchPipelines(fetchParams.project, fetchParams.token, {
+        page: pageParam,
+        pipelineVariablesFilter: fetchParams.pipelineVariablesFilter
+      }),
+    initialPageParam: 1,
+    getPreviousPageParam: (firstPage) => firstPage.paging.prev,
+    getNextPageParam: (lastPage) => lastPage.paging.next,
+    enabled: form.formState.isDirty && form.formState.isSubmitSuccessful
+  });
+
+  useEffect(() => {
+    const storageValue = window.localStorage.getItem(FETCH_PARAMS_KEY);
+    if (!storageValue) return;
+
+    const parsed = formSchema.parse(JSON.parse(storageValue));
+    for (const key in parsed) {
+      const typedKey = key as keyof typeof parsed;
+      form.setValue(typedKey, parsed[typedKey], { shouldDirty: true });
+    }
+  }, [form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    window.localStorage.setItem(FETCH_PARAMS_KEY, JSON.stringify(values));
+    setFetchParams(values);
   }
 
   return (
@@ -60,7 +95,11 @@ export function ListPipelines() {
                   <FormItem>
                     <FormLabel>Token</FormLabel>
                     <FormControl>
-                      <Input placeholder="glpat_..." {...field} />
+                      <Input
+                        placeholder="glpat_..."
+                        {...field}
+                        type="password"
+                      />
                     </FormControl>
                     <FormDescription>
                       Fill this with your{' '}
@@ -118,28 +157,145 @@ export function ListPipelines() {
         </Form>
       </section>
 
-      <section className="mt-8">
-        <h2 className="sr-only">Pipelines list</h2>
+      {pipelinesQuery.data && (
+        <section className="mt-8 relative">
+          <h2 className="sr-only">Pipelines list</h2>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Invoice</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Method</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">INV001</TableCell>
-              <TableCell>Paid</TableCell>
-              <TableCell>Credit Card</TableCell>
-              <TableCell className="text-right">$250.00</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </section>
+          <div>
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Pipeline link</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created at</TableHead>
+                  <TableHead>Variables</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pipelinesQuery.error ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      An error occurred, please try again.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pipelinesQuery.data.pages.map((page) => (
+                    <Fragment key={page.paging.next}>
+                      {page.data.map((pipeline) => (
+                        <TableRow key={pipeline.link}>
+                          <TableCell className="font-medium">
+                            <Link href={pipeline.link}>{pipeline.link}</Link>
+                          </TableCell>
+                          <TableCell>{pipeline.status}</TableCell>
+                          <TableCell>
+                            {new Intl.DateTimeFormat(
+                              window.navigator.language,
+                              {
+                                dateStyle: 'medium',
+                                timeStyle: 'long'
+                              }
+                            ).format(new Date(pipeline.createdAt))}
+                          </TableCell>
+                          <TableCell>
+                            <ol>
+                              {pipeline.variables.map((variable) => (
+                                <li key={variable.key}>
+                                  <span className="font-bold">
+                                    {variable.key}:{' '}
+                                  </span>{' '}
+                                  {variable.value}
+                                </li>
+                              ))}
+                            </ol>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </Fragment>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <div className="flex items-center gap-x-4 mt-6">
+              <Button
+                onClick={() => pipelinesQuery.fetchNextPage()}
+                variant="outline"
+                disabled={!pipelinesQuery.hasNextPage}
+              >
+                Fetch more pipelines
+              </Button>
+
+              <CurrentPageInformation
+                hasNext={pipelinesQuery.hasNextPage}
+                pagesLength={pipelinesQuery.data.pages.length}
+              />
+            </div>
+          </div>
+
+          {pipelinesQuery.isFetching && (
+            <div className="w-full h-full flex items-center justify-center bg-white opacity-50 absolute top-0">
+              <LoaderCircleIcon className="animate-spin" />
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
+
+function CurrentPageInformation({
+  pagesLength,
+  hasNext
+}: {
+  pagesLength: number;
+  hasNext: boolean;
+}) {
+  return (
+    <div className="space-x-2 text-xs text-muted-foreground">
+      <span>Current page: {pagesLength}.</span>
+      {!hasNext && <span>Maximum page reached.</span>}
+    </div>
+  );
+}
+
+async function fetchPipelines(
+  namespace: string,
+  token: string,
+  opts: {
+    pipelineVariablesFilter: string;
+    page: number;
+  }
+): Promise<GitLabPipelinesResponse> {
+  const { page, pipelineVariablesFilter } = opts;
+  const searchParams = new URLSearchParams();
+  searchParams.set('page', String(page));
+
+  if (pipelineVariablesFilter.length > 0) {
+    const params = pipelineVariablesFilter
+      .split(/,\s?/)
+      .map((item) => item.split('='));
+    for (const paramTuple of params) {
+      if (paramTuple.length < 2) continue;
+
+      searchParams.set(paramTuple[0], paramTuple[1]);
+    }
+  }
+
+  const searchParamsString = `?${searchParams.toString()}`;
+
+  const response = await fetch(
+    `/api/gitlab/${namespace}/pipelines${searchParamsString}`,
+    {
+      headers: {
+        'PRIVATE-TOKEN': token
+      }
+    }
+  );
+  return response.json();
+}
+
+export const ListPipelines = () => (
+  <QueryProvider>
+    <ListPipelinesComponent />
+  </QueryProvider>
+);

@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 import type { AnchorHTMLAttributes } from 'react';
 
-export function Link({
-  className,
-  ...props
-}: AnchorHTMLAttributes<HTMLAnchorElement>) {
-  let externalProps: Partial<AnchorHTMLAttributes<HTMLAnchorElement>> = {};
+interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  href: string;
+}
+
+export function Link({ className, ...props }: Props) {
+  let externalProps: Partial<Props> = {};
   if (props.href.startsWith('http')) {
     externalProps = {
       target: '_blank',
