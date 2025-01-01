@@ -14,6 +14,5 @@ export default defineConfig({
       applyBaseStyles: false
     })
   ],
-  output: 'static',
   adapter: netlify()
 });
