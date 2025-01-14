@@ -32,7 +32,7 @@ export const GET: APIRoute = async ({ request }) => {
   );
 
   const { data: pipelines, headers: pipelineResponseHeaders } = await axios(
-    `https://gitlab.com/api/v4/projects/${project}/${gitlabEndpoint}?page=${page}&per_page=1`,
+    `https://gitlab.com/api/v4/projects/${project}/${gitlabEndpoint}?page=${page}`,
     {
       headers: {
         'PRIVATE-TOKEN': gitlabToken
