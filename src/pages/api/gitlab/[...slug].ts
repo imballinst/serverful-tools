@@ -13,8 +13,8 @@ export const GET: APIRoute = async ({ request }) => {
   const requestUrl = new URL(request.url);
   const apiPath = requestUrl.pathname.slice(ROUTE_PREFIX.length);
 
-  const [account, project, ...rest] = apiPath.split('/');
-  if (!account || !project || rest.length === 0) {
+  const [project, ...rest] = apiPath.split('/');
+  if (!project || rest.length === 0) {
     return new Response(
       JSON.stringify({
         message:
@@ -25,7 +25,6 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   // Reference: https://docs.gitlab.com/ee/api/rest/index.html#namespaced-paths.
-  const namespaceAndProjectPath = encodeURIComponent(`${account}/${project}`);
   const gitlabEndpoint = rest.join('/');
 
   const { page = '1', ...pipelineVariablesToFilter } = Object.fromEntries(
@@ -33,7 +32,7 @@ export const GET: APIRoute = async ({ request }) => {
   );
 
   const { data: pipelines, headers: pipelineResponseHeaders } = await axios(
-    `https://gitlab.com/api/v4/projects/${namespaceAndProjectPath}/${gitlabEndpoint}?page=${page}&per_page=1`,
+    `https://gitlab.com/api/v4/projects/${project}/${gitlabEndpoint}?page=${page}&per_page=1`,
     {
       headers: {
         'PRIVATE-TOKEN': gitlabToken
