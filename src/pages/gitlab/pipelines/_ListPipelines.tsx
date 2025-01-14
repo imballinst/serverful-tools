@@ -284,7 +284,7 @@ async function fetchPipelines(
   const searchParamsString = `?${searchParams.toString()}`;
 
   const response = await fetch(
-    `/api/gitlab/${namespace}/pipelines${searchParamsString}`,
+    `/api/gitlab/${encodeURIComponent(namespace)}/pipelines${searchParamsString}`,
     {
       headers: {
         'PRIVATE-TOKEN': token
