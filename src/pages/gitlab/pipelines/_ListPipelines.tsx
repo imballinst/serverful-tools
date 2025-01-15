@@ -19,10 +19,11 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import type { GitLabPipelinesResponse } from '@/models/pipelines';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { LoaderCircleIcon } from 'lucide-react';
+import { Circle, LoaderCircleIcon } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -55,9 +56,10 @@ function ListPipelinesComponent() {
         page: pageParam,
         pipelineVariablesFilter: fetchParams.pipelineVariablesFilter
       }),
+    retry: 0,
     initialPageParam: 1,
-    getPreviousPageParam: (firstPage) => firstPage.paging.prev,
-    getNextPageParam: (lastPage) => lastPage.paging.next,
+    getPreviousPageParam: (firstPage) => firstPage.paging?.prev,
+    getNextPageParam: (lastPage) => lastPage.paging?.next,
     enabled: form.formState.isDirty && form.formState.isSubmitSuccessful
   });
 
@@ -76,6 +78,8 @@ function ListPipelinesComponent() {
     window.localStorage.setItem(FETCH_PARAMS_KEY, JSON.stringify(values));
     setFetchParams(values);
   }
+
+  console.info(JSON.stringify(pipelinesQuery))
 
   return (
     <div className="w-full">
@@ -157,7 +161,7 @@ function ListPipelinesComponent() {
         </Form>
       </section>
 
-      {pipelinesQuery.data && (
+      {pipelinesQuery.isFetched && (
         <section className="mt-8 relative">
           <h2 className="sr-only">Pipelines list</h2>
 
@@ -165,28 +169,33 @@ function ListPipelinesComponent() {
             <Table className="text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Pipeline link</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created at</TableHead>
+                  <TableHead className="w-[150px]">Pipeline link</TableHead>
+                  <TableHead className="w-[250px]">Created at</TableHead>
                   <TableHead>Variables</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pipelinesQuery.error ? (
                   <TableRow>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={4} className='text-muted-foreground'>
                       An error occurred, please try again.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  pipelinesQuery.data.pages.map((page) => (
+                  pipelinesQuery.data?.pages.map((page) => (
                     <Fragment key={page.paging.next}>
                       {page.data.map((pipeline) => (
                         <TableRow key={pipeline.link}>
                           <TableCell className="font-medium">
-                            <Link href={pipeline.link}>{pipeline.link}</Link>
+                            <div className='flex gap-x-2 items-center'>
+                              <Link href={pipeline.link}>{pipeline.link.split('/').at(-1)}</Link>
+
+                              <Circle size={12} className={cn({
+                                'fill-red-500 stroke-red-500': pipeline.status !== 'success',
+                                'fill-green-500 stroke-green-500': pipeline.status === 'success',
+                              })} />
+                            </div>
                           </TableCell>
-                          <TableCell>{pipeline.status}</TableCell>
                           <TableCell>
                             {new Intl.DateTimeFormat(
                               window.navigator.language,
@@ -197,7 +206,7 @@ function ListPipelinesComponent() {
                             ).format(new Date(pipeline.createdAt))}
                           </TableCell>
                           <TableCell>
-                            <ol>
+                            <ol className='list-decimal pl-4'>
                               {pipeline.variables.map((variable) => (
                                 <li key={variable.key}>
                                   <span className="font-bold">
@@ -227,7 +236,7 @@ function ListPipelinesComponent() {
 
               <CurrentPageInformation
                 hasNext={pipelinesQuery.hasNextPage}
-                pagesLength={pipelinesQuery.data.pages.length}
+                pagesLength={pipelinesQuery.data?.pages.length}
               />
             </div>
           </div>
@@ -247,13 +256,13 @@ function CurrentPageInformation({
   pagesLength,
   hasNext
 }: {
-  pagesLength: number;
+  pagesLength: number | undefined;
   hasNext: boolean;
 }) {
   return (
     <div className="space-x-2 text-xs text-muted-foreground">
-      <span>Current page: {pagesLength}.</span>
-      {!hasNext && <span>Maximum page reached.</span>}
+      <span>Current page: {pagesLength ?? 'N/A'}.</span>
+      {!!pagesLength && !hasNext && <span>Maximum page reached.</span>}
     </div>
   );
 }
@@ -291,7 +300,13 @@ async function fetchPipelines(
       }
     }
   );
-  return response.json();
+  const json = await response.json();
+
+  if (response.status >= 400) {
+    throw new Error(json.message)
+  }
+
+  return json
 }
 
 export const ListPipelines = () => (

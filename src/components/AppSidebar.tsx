@@ -33,7 +33,7 @@ export function AppSidebar({
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
+                <SidebarMenuItem className={pathname === '/' ? 'bg-sidebar-accent' : undefined}>
                   <SidebarMenuButton asChild>
                     <a href="/">
                       <Home />
