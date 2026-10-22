@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -20,12 +20,14 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
-      - uses: actions/checkout@v2
-      - name: Setup node 18
-        uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - name: Setup node 26
+        uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 26.12.1
           cache: yarn
+      - name: Enable corepack
+        run: npm install -g corepack@0.36.0 && corepack enable
       - run: yarn
       - run: yarn netlify link --id $NETLIFY_SITE_ID
       - run: yarn netlify build
